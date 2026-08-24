@@ -1,0 +1,465 @@
+import AppKit
+import SwiftUI
+
+// MARK: - Model
+
+enum PreviewItem {
+    /// Önizleme görüntüsü, kayıtlı dosya, piksel görüntüsü (düzenleme için), ölçek
+    case image(NSImage, URL, CGImage, CGFloat)
+    case video(URL)
+}
+
+@MainActor
+final class PreviewModel: ObservableObject {
+    @Published var item: PreviewItem?
+    /// Anlık geri bildirim ("Kopyalandı" gibi)
+    @Published var status: String?
+}
+
+// MARK: - Denetleyici
+
+/// Sağ alttaki çerçevesiz önizleme kartı.
+///
+/// • Çerçeve/panel kromu yok: yalnızca görüntü, saç teli kontur ve yumuşak gölge.
+/// • Görüntüye tıklanınca düzenleyici EKRANIN ORTASINDA açılır; Kaydet
+///   aynı dosyanın üzerine yazar (yeni dosya üretmez).
+/// • Herhangi bir yere tıklanınca kapanır — sabit bekleme yok.
+/// • Fare üstündeyken altta işlem çipleri belirir (Düzenle, Kopyala, OCR, Göster, Sil).
+@MainActor
+final class PreviewPanelController {
+    static let shared = PreviewPanelController()
+
+    let model = PreviewModel()
+
+    private var panel: NSPanel?
+    private var dismissTimer: Timer?
+    private var statusTimer: Timer?
+    /// Kartın DIŞINDAKİ tıklamaları yakalayan izleyiciler (kendi penceremiz dahil her yer)
+    private var localClickMonitor: Any?
+    private var globalClickMonitor: Any?
+
+    private init() {}
+
+    // MARK: - Göster
+
+    func show(_ item: PreviewItem) {
+        close()
+        model.item = item
+
+        let size = contentSize(for: item)
+        let margin: CGFloat = 16
+
+        // Fare hangi ekrandaysa orada, sağ altta belir
+        let mouse = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
+        guard let screen else { return }
+        let origin = CGPoint(
+            x: screen.visibleFrame.maxX - size.width - margin,
+            y: screen.visibleFrame.minY + margin
+        )
+
+        let panel = NSPanel(
+            contentRect: NSRect(origin: origin, size: size),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false   // gölgeyi SwiftUI çiziyor; çift gölge olmasın
+        panel.level = .statusBar
+        panel.sharingType = .none
+        panel.isFloatingPanel = true
+        panel.hidesOnDeactivate = false
+        panel.becomesKeyOnlyIfNeeded = true
+        panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
+        panel.animationBehavior = .none
+        panel.appearance = NSAppearance(named: .darkAqua)
+
+        let hosting = NSHostingView(rootView: PreviewCardView(model: model, controller: self))
+        panel.contentView = hosting
+
+        // Başlangıç: hafif küçük + saydam
+        let finalFrame = panel.frame
+        panel.setFrame(finalFrame.insetBy(dx: 12, dy: 12), display: false)
+        panel.alphaValue = 0
+        panel.orderFrontRegardless()
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.28
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            panel.animator().setFrame(finalFrame, display: true)
+            panel.animator().alphaValue = 1
+        }
+
+        self.panel = panel
+        installClickMonitors()
+        scheduleDismiss()
+    }
+
+    // MARK: - Boyut
+
+    private func contentSize(for item: PreviewItem) -> CGSize {
+        switch item {
+        case let .image(nsImage, _, _, _):
+            let maxW: CGFloat = 340
+            let maxH: CGFloat = 280
+            let imageSize = nsImage.size
+            guard imageSize.width > 0, imageSize.height > 0 else {
+                return CGSize(width: 240, height: 180)
+            }
+            let scale = min(maxW / imageSize.width, maxH / imageSize.height)
+            return CGSize(
+                width: floor(imageSize.width * scale),
+                height: floor(imageSize.height * scale)
+            )
+        case .video:
+            return CGSize(width: 300, height: 64)
+        }
+    }
+
+    // MARK: - Zamanlayıcılar
+
+    private func scheduleDismiss() {
+        dismissTimer?.invalidate()
+        let seconds = SettingsStore.shared.previewSeconds
+        dismissTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.close() }
+        }
+    }
+
+    func pauseDismiss() {
+        dismissTimer?.invalidate()
+        dismissTimer = nil
+    }
+
+    func resumeDismiss() {
+        scheduleDismiss()
+    }
+
+    // MARK: - Kapatma (her yere tıkla)
+
+    private func installClickMonitors() {
+        removeClickMonitors()
+        let mask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        // Uygulama DIŞINDAKİ her tıklama kartı kapatır
+        globalClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] _ in
+            Task { @MainActor in self?.close() }
+        }
+        // Uygulama İÇİNDEKİ tıklamalar: kartın kendisine değilse kapat
+        localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] event in
+            guard let self else { return event }
+            if event.window !== self.panel {
+                self.close()
+            }
+            return event
+        }
+    }
+
+    private func removeClickMonitors() {
+        if let monitor = globalClickMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalClickMonitor = nil
+        }
+        if let monitor = localClickMonitor {
+            NSEvent.removeMonitor(monitor)
+            localClickMonitor = nil
+        }
+    }
+
+    func close() {
+        dismissTimer?.invalidate()
+        dismissTimer = nil
+        removeClickMonitors()
+        guard let panel else { return }
+        self.panel = nil
+        let frame = panel.frame
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.18
+            panel.animator().alphaValue = 0
+            panel.animator().setFrame(frame.insetBy(dx: 8, dy: 8), display: true)
+        }, completionHandler: {
+            panel.orderOut(nil)
+        })
+    }
+
+    // MARK: - İşlemler
+
+    /// Görüntüye tıkla → düzenleyici ekranın ortasında açılır; kaydedince
+    /// AYNI DOSYANIN üstüne yazılır.
+    func editCurrentImage() {
+        guard case let .image(_, url, cgImage, scale)? = model.item else { return }
+        let mouse = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
+        close()
+        guard let screen else { return }
+        AnnotationEditorController.shared.present(
+            image: cgImage,
+            on: screen,
+            scale: scale,
+            anchor: nil   // ekranın ortası
+        ) { result in
+            guard let result else { return }
+            OutputPipeline.overwrite(result, at: url, scale: scale)
+        }
+    }
+
+    func copy() {
+        guard case let .image(nsImage, _, _, _)? = model.item else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects([nsImage])
+        flash("Kopyalandı")
+    }
+
+    func runOCR() {
+        guard case let .image(_, _, cgImage, _)? = model.item else { return }
+        pauseDismiss()
+        Task {
+            let text = try? await OCRService.recognizeText(in: cgImage)
+            if let text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let pasteboard = NSPasteboard.general
+                pasteboard.clearContents()
+                pasteboard.setString(text, forType: .string)
+                self.flash("Metin panoya kopyalandı")
+            } else {
+                self.flash("Metin bulunamadı")
+            }
+        }
+    }
+
+    func openCurrent() {
+        guard let item = model.item else { return }
+        switch item {
+        case let .image(_, url, _, _), let .video(url):
+            NSWorkspace.shared.open(url)
+        }
+        close()
+    }
+
+    func revealCurrent() {
+        guard let item = model.item else { return }
+        switch item {
+        case let .image(_, url, _, _), let .video(url):
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        }
+        close()
+    }
+
+    func deleteCurrent() {
+        guard let item = model.item else { return }
+        switch item {
+        case let .image(_, url, _, _), let .video(url):
+            try? FileManager.default.trashItem(at: url, resultingItemURL: nil)
+        }
+        close()
+    }
+
+    /// Kısa durum yazısı gösterir; ardından kapanma sayacı yeniden başlar.
+    func flash(_ text: String) {
+        statusTimer?.invalidate()
+        withAnimation(.easeOut(duration: 0.15)) {
+            model.status = text
+        }
+        statusTimer = Timer.scheduledTimer(withTimeInterval: 1.6, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                withAnimation(.easeOut(duration: 0.2)) {
+                    self.model.status = nil
+                }
+                self.resumeDismiss()
+            }
+        }
+    }
+}
+
+// MARK: - SwiftUI kart
+
+struct PreviewCardView: View {
+    @ObservedObject var model: PreviewModel
+    weak var controller: PreviewPanelController?
+    /// Pazarlama dışa aktarımında hover çiplerini açık tutar.
+    var forceHover = false
+
+    @State private var hovering = false
+
+    var body: some View {
+        Group {
+            switch model.item {
+            case let .image(nsImage, _, _, _)?:
+                imageCard(nsImage)
+            case let .video(url)?:
+                videoCard(url)
+            case .none:
+                EmptyView()
+            }
+        }
+    }
+
+    // MARK: Görüntü kartı (çerçevesiz)
+
+    private func imageCard(_ nsImage: NSImage) -> some View {
+        ZStack(alignment: .bottom) {
+            Image(nsImage: nsImage)
+                .resizable()
+                .interpolation(.high)
+                .aspectRatio(contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.5)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color.black.opacity(0.35), lineWidth: 0.5)
+                        .padding(-0.5)
+                )
+                .shadow(color: .black.opacity(0.4), radius: 14, y: 5)
+                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .simultaneousGesture(
+                    TapGesture().onEnded { controller?.editCurrentImage() }
+                )
+                .onDrag {
+                    if case let .image(_, url, _, _)? = model.item {
+                        return NSItemProvider(object: url as NSURL)
+                    }
+                    return NSItemProvider()
+                }
+
+            // Hover işlem çipleri
+            if hovering {
+                chipRow
+                    .padding(8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
+            // Durum bildirimi ("Kopyalandı" gibi)
+            if let status = model.status {
+                VStack {
+                    Text(status)
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(Color.black.opacity(0.72)))
+                        .transition(.opacity)
+                    Spacer()
+                }
+                .padding(.top, 10)
+            }
+        }
+        .onAppear {
+            if forceHover { hovering = true }
+        }
+        .onHover { inside in
+            withAnimation(.easeOut(duration: 0.18)) {
+                hovering = inside || forceHover
+            }
+            if inside {
+                controller?.pauseDismiss()
+            } else {
+                controller?.resumeDismiss()
+            }
+        }
+    }
+
+    private var chipRow: some View {
+        HStack(spacing: 2) {
+            chip(icon: "pencil.tip.crop.circle", label: "Düzenle") { controller?.editCurrentImage() }
+            chip(icon: "doc.on.doc", label: "Kopyala") { controller?.copy() }
+            if ProManager.shared.isPro {
+                chip(icon: "text.viewfinder", label: "OCR") { controller?.runOCR() }
+            } else {
+                proChip
+            }
+            chip(icon: "folder", label: "Göster") { controller?.revealCurrent() }
+            chip(icon: "trash", label: "Sil", tint: .red) { controller?.deleteCurrent() }
+            chip(icon: "xmark", label: "Kapat") { controller?.close() }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(
+            Capsule().fill(.ultraThinMaterial)
+                .overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5))
+                .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
+        )
+    }
+
+    private var proChip: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "text.viewfinder")
+            Text("PRO")
+                .font(.system(size: 8, weight: .heavy, design: .rounded))
+        }
+        .font(.system(size: 11))
+        .foregroundStyle(.white.opacity(0.3))
+        .padding(.horizontal, 7)
+        .padding(.vertical, 5)
+        .help("OCR yalnızca Pro'da — Ayarlar'dan aç")
+    }
+
+    private func chip(icon: String, label: String, tint: Color = .white, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(tint.opacity(0.9))
+                .frame(width: 26, height: 26)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(label)
+    }
+
+    // MARK: Video kartı
+
+    private func videoCard(_ url: URL) -> some View {
+        HStack(spacing: 10) {
+            Button {
+                controller?.openCurrent()
+            } label: {
+                Image(systemName: "film.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(LinearGradient(colors: [.red.opacity(0.9), .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("Videoyu aç")
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(url.lastPathComponent)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text(model.status ?? "Video kaydedildi")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.white.opacity(0.55))
+            }
+
+            Spacer(minLength: 4)
+
+            HStack(spacing: 2) {
+                chip(icon: "folder", label: "Finder'da göster") { controller?.revealCurrent() }
+                chip(icon: "trash", label: "Sil", tint: .red) { controller?.deleteCurrent() }
+                chip(icon: "xmark", label: "Kapat") { controller?.close() }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5)
+                )
+                .shadow(color: .black.opacity(0.4), radius: 14, y: 5)
+        )
+    }
+}
