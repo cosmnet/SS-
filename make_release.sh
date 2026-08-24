@@ -9,7 +9,8 @@ APP_NAME="SS+"
 APP="dist/${APP_NAME}.app"
 VERSION="${1:-1.0.0}"
 VOL_NAME="SS+ ${VERSION}"
-DMG="dist/SS+-${VERSION}.dmg"
+# Dosya adında "+" kullanma: GitHub Releases yüklemesi bu karakterde hata veriyor.
+DMG="dist/SSPlus-${VERSION}.dmg"
 STAGE="dist/.dmg-stage"
 
 # 1) Universal release derlemesi + imza
