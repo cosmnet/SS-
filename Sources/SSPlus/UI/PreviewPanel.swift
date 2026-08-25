@@ -498,7 +498,7 @@ struct PreviewCardView: View {
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                Text(model.status ?? L("Video kaydedildi"))
+                Text(model.status ?? uploadStatusText ?? L("Video kaydedildi"))
                     .font(.system(size: 10.5))
                     .foregroundStyle(.white.opacity(0.55))
             }
@@ -506,6 +506,10 @@ struct PreviewCardView: View {
             Spacer(minLength: 4)
 
             HStack(spacing: 2) {
+                if case .done? = model.upload {
+                    chip(icon: "link", label: L("Drive linkini kopyala")) { controller?.copyDriveLink() }
+                    chip(icon: "arrow.up.right.square", label: L("Google Drive'da aç")) { controller?.openDriveLink() }
+                }
                 chip(icon: "folder", label: L("Finder'da göster")) { controller?.revealCurrent() }
                 chip(icon: "trash", label: L("Sil"), tint: .red) { controller?.deleteCurrent() }
                 chip(icon: "xmark", label: L("Kapat")) { controller?.close() }

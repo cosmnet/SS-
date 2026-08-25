@@ -160,6 +160,10 @@ final class SettingsStore: ObservableObject {
     @Published var driveShareAnyone: Bool {
         didSet { d.set(driveShareAnyone, forKey: "driveShareAnyone") }
     }
+    /// Video kayıtlarını da Drive'a yükle (büyük dosyalar; varsayılan KAPALI)
+    @Published var driveUploadVideos: Bool {
+        didSet { d.set(driveUploadVideos, forKey: "driveUploadVideos") }
+    }
     /// Paylaşım bağlantısını panoya kopyala
     @Published var driveCopyLink: Bool {
         didSet { d.set(driveCopyLink, forKey: "driveCopyLink") }
@@ -227,6 +231,7 @@ final class SettingsStore: ObservableObject {
         clearClipboardHistoryOnQuit = d.object(forKey: "clearClipboardHistoryOnQuit") as? Bool ?? false
         driveUploadEnabled = d.object(forKey: "driveUploadEnabled") as? Bool ?? false
         driveShareAnyone = d.object(forKey: "driveShareAnyone") as? Bool ?? true
+        driveUploadVideos = d.object(forKey: "driveUploadVideos") as? Bool ?? false
         driveCopyLink = d.object(forKey: "driveCopyLink") as? Bool ?? true
         driveFolderName = d.string(forKey: "driveFolderName") ?? "SS+"
         driveFolderID = d.string(forKey: "driveFolderID") ?? ""

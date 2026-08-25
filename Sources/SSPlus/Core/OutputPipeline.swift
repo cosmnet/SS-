@@ -98,6 +98,7 @@ enum OutputPipeline {
         if settings.showPreview {
             PreviewPanelController.shared.show(.video(url), note: note)
         }
+        DriveUploadCoordinator.shared.uploadVideo(localURL: url)
     }
 
     /// Görüntüyü panoya yazar ve pano geçmişine ZATEN kodlanmış veriyi verir;

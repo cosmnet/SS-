@@ -84,6 +84,48 @@ enum GoogleDriveAPI {
         return try JSONDecoder().decode(DriveFile.self, from: response)
     }
 
+    /// Büyük dosyalar (video) için sürdürülebilir yükleme: içerik diskten
+    /// akıtılır, belleğe alınmaz. Metadata ile oturum açılır, dosya PUT edilir.
+    static func uploadResumable(fileURL: URL, name: String, mimeType: String, parent: String) async throws -> DriveFile {
+        let size = (try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? Int) ?? 0
+        let meta = try JSONSerialization.data(withJSONObject: ["name": name, "parents": [parent]])
+
+        // 1) Oturum: Location başlığında yükleme adresi döner
+        var token = try await GoogleAuth.shared.validAccessToken()
+        var location: URL?
+        for attempt in 0..<2 {
+            var start = URLRequest(url: URL(string: "\(uploadBase)/files?uploadType=resumable&fields=id,name,webViewLink")!)
+            start.httpMethod = "POST"
+            start.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            start.setValue("application/json; charset=UTF-8", forHTTPHeaderField: "Content-Type")
+            start.setValue(mimeType, forHTTPHeaderField: "X-Upload-Content-Type")
+            start.setValue(String(size), forHTTPHeaderField: "X-Upload-Content-Length")
+            start.httpBody = meta
+            let (data, response) = try await URLSession.shared.data(for: start)
+            let http = response as? HTTPURLResponse
+            if http?.statusCode == 401, attempt == 0 {
+                token = try await GoogleAuth.shared.validAccessToken(forceRefresh: true)
+                continue
+            }
+            try check(response, data)
+            guard let loc = http?.value(forHTTPHeaderField: "Location"), let url = URL(string: loc) else {
+                throw GoogleDriveError.badResponse
+            }
+            location = url
+            break
+        }
+        guard let location else { throw GoogleDriveError.badResponse }
+
+        // 2) İçerik: diskten akıtılır
+        var put = URLRequest(url: location)
+        put.httpMethod = "PUT"
+        put.setValue(mimeType, forHTTPHeaderField: "Content-Type")
+        put.setValue(String(size), forHTTPHeaderField: "Content-Length")
+        let (data, response) = try await URLSession.shared.upload(for: put, fromFile: fileURL)
+        try check(response, data)
+        return try JSONDecoder().decode(DriveFile.self, from: data)
+    }
+
     /// Var olan dosyanın içeriğini değiştirir (aynı kimlik, aynı bağlantı).
     static func update(fileID: String, data: Data, mimeType: String) async throws -> DriveFile {
         let response = try await request(
@@ -184,6 +226,46 @@ final class DriveUploadCoordinator {
                     PreviewPanelController.shared.setUploadState(.failed(L("Bağlantı alınamadı")), for: localURL)
                 }
                 _ = file
+            } catch {
+                PreviewPanelController.shared.setUploadState(.failed(error.localizedDescription), for: localURL)
+                if case GoogleAuthError.sessionExpired = error, !expiryAlertShown {
+                    expiryAlertShown = true
+                    AppState.shared.presentError(error)
+                }
+            }
+        }
+    }
+
+    /// Video kaydı: ayarda açıksa diskten sürdürülebilir yüklemeyle gönderilir.
+    func uploadVideo(localURL: URL) {
+        guard isActive, SettingsStore.shared.driveUploadVideos else { return }
+        let mime = localURL.pathExtension.lowercased() == "mp4" ? "video/mp4" : "video/quicktime"
+        PreviewPanelController.shared.setUploadState(.uploading, for: localURL)
+        Task {
+            do {
+                var folder = try await ensureFolder()
+                let file: DriveFile
+                do {
+                    file = try await GoogleDriveAPI.uploadResumable(fileURL: localURL, name: localURL.lastPathComponent, mimeType: mime, parent: folder)
+                } catch GoogleDriveError.http(404, _) {
+                    SettingsStore.shared.driveFolderID = ""
+                    folder = try await ensureFolder()
+                    file = try await GoogleDriveAPI.uploadResumable(fileURL: localURL, name: localURL.lastPathComponent, mimeType: mime, parent: folder)
+                }
+                if SettingsStore.shared.driveShareAnyone {
+                    try await GoogleDriveAPI.shareAnyone(fileID: file.id)
+                }
+                guard let link = file.webViewLink.flatMap(URL.init) else {
+                    PreviewPanelController.shared.setUploadState(.failed(L("Bağlantı alınamadı")), for: localURL)
+                    return
+                }
+                if SettingsStore.shared.driveShareAnyone, SettingsStore.shared.driveCopyLink {
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(link.absoluteString, forType: .string)
+                    ClipboardStore.shared.markOwnChange(pasteboard.changeCount)
+                }
+                PreviewPanelController.shared.setUploadState(.done(link), for: localURL)
             } catch {
                 PreviewPanelController.shared.setUploadState(.failed(error.localizedDescription), for: localURL)
                 if case GoogleAuthError.sessionExpired = error, !expiryAlertShown {

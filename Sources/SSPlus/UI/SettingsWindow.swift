@@ -416,6 +416,10 @@ struct OutputTab: View {
 
                 Toggle(L("Ekran görüntülerini Drive'a yükle"), isOn: $settings.driveUploadEnabled)
                     .toggleStyle(.switch)
+                Toggle(L("Video kayıtlarını da yükle"), isOn: $settings.driveUploadVideos)
+                    .toggleStyle(.switch)
+                    .disabled(!settings.driveUploadEnabled)
+                caption(L("Videolar büyük olabilir; yükleme arka planda sürer ve önizleme kartında izlenir."))
 
                 HStack {
                     caption(L("Klasör"))

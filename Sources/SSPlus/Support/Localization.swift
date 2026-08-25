@@ -268,6 +268,8 @@ enum Localization {
         "Tarayıcıda Google onayı bekleniyor…": "Waiting for Google consent in the browser…",
         "Çıkış yap": "Sign out",
         "Ekran görüntülerini Drive'a yükle": "Upload screenshots to Drive",
+        "Video kayıtlarını da yükle": "Also upload video recordings",
+        "Videolar büyük olabilir; yükleme arka planda sürer ve önizleme kartında izlenir.": "Videos can be large; the upload runs in the background and is tracked on the preview card.",
         "Klasör": "Folder",
         "Drive'da aç": "Open in Drive",
         "Klasör Drive'ının kökünde oluşturulur; sonra Drive'da istediğin yere taşıyabilir ya da adını değiştirebilirsin — yüklemeler onu izlemeye devam eder.":
