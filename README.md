@@ -46,7 +46,17 @@ Swift + SwiftUI + ScreenCaptureKit ile yazılmıştır. Harici bağımlılık yo
 [gizlilik politikası](https://ssplus-app.vercel.app/privacy) ve [kullanım koşulları](https://ssplus-app.vercel.app/terms).
 Uygulama günde bir kez `version.json` dosyasını okuyarak yeni sürüm olup olmadığını denetler
 (Ayarlar → Genel → Hakkında'dan kapatılabilir ya da elle denetlenebilir). Site kaynağı `site/`
-klasöründedir; `npx vercel deploy --prod --cwd site` ile yayımlanır.
+klasöründedir. Yayımlama: Vercel, depo içinden yapılan deploy'lara git yazar bilgisini ekler ve
+yazar Vercel takımında doğrulanmış değilse deploy'u BLOCKED bırakır; bu yüzden klasörü depo dışına
+kopyalayıp oradan yayımla:
+
+```sh
+rsync -a --exclude .vercel --exclude .env.local site/ /tmp/ssplus-site/ && cd /tmp/ssplus-site \
+  && npx vercel link --yes --project ssplus && npx vercel deploy --prod --yes
+```
+
+DMG dosyaları siteye konmaz (Vercel disk imajı içeren deploy'ları engeller); indirme bağlantıları
+GitHub Releases'e gider.
 
 ---
 
