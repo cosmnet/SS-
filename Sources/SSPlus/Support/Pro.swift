@@ -19,7 +19,7 @@ final class ProManager: ObservableObject {
     ]}
 
     /// Pro'yu açan kodlar. Karşılaştırma büyük/küçük harf ve boşluk duyarsızdır.
-    private static let validCodes: Set<String> = ["cefri"]
+    private static let validCodes: Set<String> = ["cefri", "cemtest"]
 
     /// Kilidi açan kod girildiyse saklanır; Ayarlar'da gösterilir.
     @Published private(set) var redeemedCode: String? {
