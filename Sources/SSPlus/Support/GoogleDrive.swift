@@ -82,27 +82,40 @@ enum GoogleDriveAPI {
     /// files.list zaten yalnızca bu istemcinin oluşturduklarını döndürür.
     static func findFolder(named name: String) async throws -> DriveFile? {
         let escaped = name.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
-        let queries = [
-            "mimeType='\(folderMime)' and trashed=false and appProperties has { key='ssplus' and value='folder' }",
-            "mimeType='\(folderMime)' and trashed=false and name='\(escaped)'",
+        // Sorgular: etiket → tam ad → bu uygulamanın TÜM klasörleri (istemci
+        // tarafında ada göre süz). Üçüncüsü, sunucu tarafı ad eşleşmesinin
+        // kaçırabileceği durumlara (kodlama, boşluk) karşı emniyettir.
+        let queries: [(q: String, filterByName: Bool)] = [
+            ("mimeType='\(folderMime)' and trashed=false and appProperties has { key='ssplus' and value='folder' }", false),
+            ("mimeType='\(folderMime)' and trashed=false and name='\(escaped)'", false),
+            ("mimeType='\(folderMime)' and trashed=false", true),
         ]
         struct FileList: Decodable { let files: [DriveFile] }
-        for q in queries {
-            var components = URLComponents(string: "\(base)/files")!
-            components.queryItems = [
-                URLQueryItem(name: "q", value: q),
-                URLQueryItem(name: "fields", value: "files(id,name,webViewLink,createdTime,appProperties)"),
-                URLQueryItem(name: "orderBy", value: "createdTime"),
-                URLQueryItem(name: "pageSize", value: "10"),
-                URLQueryItem(name: "spaces", value: "drive"),
-            ]
-            guard let url = components.url else { continue }
-            let data = try await request("GET", url.absoluteString)
-            if let first = try JSONDecoder().decode(FileList.self, from: data).files.first {
-                return first
-            }
+        for entry in queries {
+            // URLComponents "+" karakterini kodlamaz; Google onu BOŞLUK sayar
+            // ("SS+" → "SS "). Bu yüzden sorgu dizesi burada elle, sıkı biçimde kodlanır.
+            let urlString = "\(base)/files?" + encodedQuery([
+                ("q", entry.q),
+                ("fields", "files(id,name,webViewLink,createdTime,appProperties)"),
+                ("orderBy", "createdTime"),
+                ("pageSize", entry.filterByName ? "100" : "10"),
+                ("spaces", "drive"),
+            ])
+            let data = try await request("GET", urlString)
+            let files = try JSONDecoder().decode(FileList.self, from: data).files
+            let match = entry.filterByName ? files.first { $0.name == name } : files.first
+            if let match { return match }
         }
         return nil
+    }
+
+    /// Sıkı yüzde kodlama: yalnızca harf/rakam ve "-._~" olduğu gibi kalır.
+    private static func encodedQuery(_ items: [(String, String)]) -> String {
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~")
+        return items.map { key, value in
+            "\(key)=\(value.addingPercentEncoding(withAllowedCharacters: allowed) ?? "")"
+        }.joined(separator: "&")
     }
 
     static func rename(fileID: String, to name: String) async throws {

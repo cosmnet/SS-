@@ -177,6 +177,15 @@ final class SettingsStore: ObservableObject {
         didSet { d.set(driveFolderID, forKey: "driveFolderID") }
     }
 
+    /// Günde bir kez yeni sürüm denetle
+    @Published var checkUpdatesAutomatically: Bool {
+        didSet { d.set(checkUpdatesAutomatically, forKey: "checkUpdatesAutomatically") }
+    }
+    /// Son otomatik denetim zamanı
+    @Published var lastUpdateCheck: Date {
+        didSet { d.set(lastUpdateCheck.timeIntervalSince1970, forKey: "lastUpdateCheck") }
+    }
+
     /// Arayüz dili: "system" | "tr" | "en"
     @Published var languageRaw: String {
         didSet {
@@ -235,6 +244,8 @@ final class SettingsStore: ObservableObject {
         driveCopyLink = d.object(forKey: "driveCopyLink") as? Bool ?? true
         driveFolderName = d.string(forKey: "driveFolderName") ?? "SS+"
         driveFolderID = d.string(forKey: "driveFolderID") ?? ""
+        checkUpdatesAutomatically = d.object(forKey: "checkUpdatesAutomatically") as? Bool ?? true
+        lastUpdateCheck = Date(timeIntervalSince1970: d.double(forKey: "lastUpdateCheck"))
         let storedLanguage = d.string(forKey: "language") ?? "system"
         languageRaw = storedLanguage
         Localization.preference = AppLanguage(rawValue: storedLanguage) ?? .system

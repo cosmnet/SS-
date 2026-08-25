@@ -229,6 +229,22 @@ enum Localization {
         "İmleci dahil et": "Include cursor",
         "Pro özellikleri": "Pro features",
 
+        // Sürüm / güncelleme / site
+        "Güncellemeleri denetle…": "Check for Updates…",
+        "Güncellemeleri denetle": "Check for updates",
+        "Güncellemeleri otomatik denetle": "Check for updates automatically",
+        "Sürüm geçmişi": "Version history",
+        "Web sitesi": "Website",
+        "Gizlilik politikası": "Privacy policy",
+        "Güncelsin!": "You're up to date!",
+        "SS+ %@ şu anda en yeni sürüm.": "SS+ %@ is currently the newest version available.",
+        "Yeni sürüm hazır: SS+ %@": "New version available: SS+ %@",
+        "Şu anki sürüm %@. İndirip DMG'yi Applications klasörüne sürükleyerek güncelleyebilirsin.": "You have %@. Download the DMG and drag SS+ to Applications to update.",
+        "İndir": "Download",
+        "Daha sonra": "Later",
+        "Güncelleme denetlenemedi": "Couldn't check for updates",
+        "Sunucuya ulaşılamadı: %@": "The server could not be reached: %@",
+
         // Bakım / kaldırma
         "Bakım": "Maintenance",
         "İzin sorunlarında ya da temiz kurulum için: macOS'taki SS+ izin kayıtlarını (Ekran Kaydı vb.) siler. İstersen ayarları ve Google oturumunu da kaldırıp uygulamayı Çöp'e taşır.":

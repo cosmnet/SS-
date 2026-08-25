@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Privacy Policy — SS+</title>
+<meta name="description" content="How SS+ handles your data: everything stays on your Mac; Google Drive is optional and limited to files the app creates.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/_style.css">
+</head>
+<body>
+<div class="wrap">
+<nav class="top">
+  <a class="brand" href="/"><span class="mark"></span>SS+</a>
+  <a class="link" href="/">Features</a>
+  <a class="link" href="/changelog">Version history</a>
+  <a class="link" href="/privacy" aria-current="page">Privacy</a>
+  <a class="link" href="/terms">Terms</a>
+</nav>
+
+<h1>Privacy Policy</h1>
+<p class="muted">Effective date: 25 August 2026 · Applies to the SS+ macOS application ("SS+", "the app", "we").</p>
+
+<p>SS+ is designed to keep your data on your own Mac. This policy explains what the app stores, what it sends, and the choices you have.</p>
+
+<h2>1. Summary</h2>
+<ul>
+  <li>SS+ runs entirely on your computer. It has no accounts, no servers of its own, no analytics, no advertising and no crash reporting.</li>
+  <li>Nothing leaves your Mac unless you turn on the optional <strong>Google Drive upload</strong> feature. When you do, the app talks directly to Google on your behalf.</li>
+  <li>The developer never receives your screenshots, recordings, clipboard contents, Google credentials or any other personal data.</li>
+</ul>
+
+<h2>2. Data the app stores on your Mac</h2>
+<h3>Screenshots and recordings</h3>
+<p>Captures are written to the folder you choose in Settings (the Desktop by default). They are ordinary files under your control; deleting them in Finder or from the preview card removes them.</p>
+<h3>Settings</h3>
+<p>Preferences (shortcuts, formats, language, folder path, feature toggles) are stored in macOS user defaults for the app.</p>
+<h3>Clipboard history (opt-in, off by default)</h3>
+<p>If you enable it, the last ten items you copy (text up to 5,000 characters and images) are saved to <span class="kbd">~/Library/Application Support/SSPlus/Clipboard</span> so they can be shown in the island and the menu panel. Content that other apps mark as concealed or transient (for example password managers) is never stored. You can clear the archive at any time, choose to clear it automatically on quit, or turn the feature off.</p>
+<h3>Google sign-in tokens</h3>
+<p>If you connect Google Drive, the OAuth tokens Google issues to you are stored in your macOS Keychain. They are used only to upload your captures and are deleted when you sign out or uninstall.</p>
+
+<h2>3. Google Drive (optional)</h2>
+<p>When you choose <em>Sign in with Google</em>, you authorize SS+ to use the Google Drive API with the <strong>drive.file</strong> scope. This is Google's most limited Drive permission: the app can only see and manage the folder and files it creates itself. It cannot read, list or modify anything else in your Drive.</p>
+<p>With the feature enabled, the app:</p>
+<ul>
+  <li>creates a folder (named "SS+" by default) in your Drive and uploads new screenshots — and, only if you enable it separately, video recordings — into it;</li>
+  <li>if you turn on <em>Share with anyone who has the link</em>, sets the uploaded file's permission to "anyone with the link can view" and copies that link to your clipboard. You control this per setting and can turn it off at any time; existing links can be revoked in Google Drive;</li>
+  <li>reads your Google account email address and display name once, to show which account is connected.</li>
+</ul>
+<p>All requests go directly from your Mac to Google's servers over HTTPS. No data passes through any server operated by us. Google's handling of your data is governed by the <a href="https://policies.google.com/privacy">Google Privacy Policy</a>. You can revoke SS+'s access at any time from your <a href="https://myaccount.google.com/permissions">Google Account permissions</a> or by signing out in Settings.</p>
+<p><strong>Limited Use disclosure.</strong> SS+'s use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements. Google user data is used solely to provide the upload and sharing feature you enable, is never sold, never used for advertising, and never transferred to third parties other than Google itself.</p>
+
+<h2>4. Update check</h2>
+<p>Once a day (and when you choose <em>Check for updates</em>), the app downloads a small version file from this website to tell you whether a newer version exists. The request contains no personal data and nothing about you is recorded.</p>
+
+<h2>5. macOS permissions</h2>
+<p>SS+ needs <em>Screen &amp; System Audio Recording</em> permission to capture the screen; macOS asks for it on first use. The app uses it only while you take a screenshot or record. The <em>Uninstall / Reset permissions</em> option in Settings removes the permission records for a clean reinstall.</p>
+
+<h2>6. Data sharing and sale</h2>
+<p>We do not collect, share or sell personal data. Files you choose to upload go to your own Google Drive; files you choose to share are shared by you.</p>
+
+<h2>7. Children</h2>
+<p>SS+ is a general-purpose utility not directed at children under 13, and it does not knowingly collect information from anyone.</p>
+
+<h2>8. Deleting your data</h2>
+<p>Delete captured files in Finder. Use <em>Settings → About → Uninstall / Reset permissions → Uninstall completely</em> to remove settings, the clipboard archive, Google tokens and the app itself. Files already in your Google Drive stay there until you delete them in Drive.</p>
+
+<h2>9. Changes to this policy</h2>
+<p>If the policy changes, the new version will be published at this address with an updated effective date.</p>
+
+<h2>10. Contact</h2>
+<p>Questions about privacy: <a href="mailto:cem@oynasana.com">cem@oynasana.com</a>.</p>
+
+<footer>
+  <span>© 2026 SS+</span>
+  <a href="mailto:cem@oynasana.com">cem@oynasana.com</a>
+  <a href="/privacy">Privacy policy</a>
+  <a href="/terms">Terms of use</a>
+  <a href="https://github.com/cosmnet/SS-">GitHub</a>
+</footer>
+</div>
+</body>
+</html>

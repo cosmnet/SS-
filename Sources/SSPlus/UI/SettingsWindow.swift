@@ -306,10 +306,22 @@ struct GeneralTab: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
+                Button(L("Güncellemeleri denetle")) {
+                    Task { await UpdateChecker.check(userInitiated: true) }
+                }
+                Button(L("Sürüm geçmişi")) { NSWorkspace.shared.open(SiteLinks.changelog) }
+            }
+            .controlSize(.small)
+            rowDivider()
+            HStack(spacing: 12) {
+                Toggle(L("Güncellemeleri otomatik denetle"), isOn: $settings.checkUpdatesAutomatically)
+                    .toggleStyle(.checkbox)
+                Spacer()
+                Button(L("Web sitesi")) { NSWorkspace.shared.open(SiteLinks.home) }
                 Button(L("Kaldır / İzinleri sıfırla…")) { Uninstaller.present() }
-                    .controlSize(.small)
                     .help(L("İzin sorunlarında ya da temiz kurulum için: macOS'taki SS+ izin kayıtlarını (Ekran Kaydı vb.) siler. İstersen ayarları ve Google oturumunu da kaldırıp uygulamayı Çöp'e taşır."))
             }
+            .controlSize(.small)
         }
     }
 }
@@ -451,6 +463,9 @@ struct OutputTab: View {
                 Text(auth.accountEmail ?? "")
                     .font(.system(size: 12, weight: .medium))
                 Spacer()
+                Button(L("Gizlilik politikası")) { NSWorkspace.shared.open(SiteLinks.privacy) }
+                    .buttonStyle(.link)
+                    .font(.system(size: 11))
                 Button(L("Çıkış yap")) { Task { await auth.signOut() } }
                     .controlSize(.small)
             }

@@ -430,6 +430,8 @@ private final class LoopbackServer: @unchecked Sendable {
           button{font:inherit;font-weight:600;color:#fff;background:\(accent);border:0;border-radius:12px;padding:12px 22px;cursor:pointer}
           button:hover{filter:brightness(1.08)}
           .app{margin-top:18px;font-size:12px;color:var(--muted)}
+          .app a{color:var(--muted);text-decoration:none;border-bottom:1px solid var(--line)}
+          .app a:hover{color:\(accent)}
         </style></head>
         <body>
           <div class="card">
@@ -438,7 +440,7 @@ private final class LoopbackServer: @unchecked Sendable {
             <h1>\(title)</h1>
             <p>\(detail)</p>
             <button onclick="window.close()">\(close)</button>
-            <div class="app">SS+ · Google Drive</div>
+            <div class="app"><a href="\(SiteLinks.home.absoluteString)">ssplus.vercel.app</a> · <a href="\(SiteLinks.privacy.absoluteString)">\(L("Gizlilik politikası"))</a></div>
           </div>
           <script>setTimeout(function(){try{window.close()}catch(e){}},1500)</script>
         </body></html>

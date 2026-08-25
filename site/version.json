@@ -1,0 +1,7 @@
+{
+  "version": "1.4.0",
+  "build": 14,
+  "download": "https://github.com/cosmnet/SS-/releases/download/v1.4.0/SSPlus-1.4.0.dmg",
+  "notes": "https://ssplus.vercel.app/changelog",
+  "minimumOS": "14.0"
+}

@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import ServiceManagement
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -28,6 +29,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         observeHotkeySettings()
         if !exporting {
             PermissionManager.prepareAtLaunch()
+            applyLoginItemDefault()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                UpdateChecker.checkAutomaticallyIfDue()
+            }
         }
 
         if let idx = ProcessInfo.processInfo.arguments.firstIndex(of: "--export-ui-shots"),
@@ -42,6 +47,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+
+    /// İlk açılışta girişte başlatma VARSAYILAN olarak açılır (kullanıcı
+    /// Ayarlar'dan kapatabilir; bayrak sayesinde bir daha zorlanmaz).
+    private func applyLoginItemDefault() {
+        guard Bundle.main.bundleURL.pathExtension == "app" else { return }
+        let key = "loginItemDefaultApplied"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        try? SMAppService.mainApp.register()
     }
 
     /// Kayıt sürerken çıkış (⌘Q, menü, oturum kapatma, izin onarımı sonrası
@@ -150,6 +165,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let record = SettingsStore.shared.recordHotkey
         let recording = AppState.shared.isRecording
 
+        let versionItem = NSMenuItem(title: "SS+ \(UpdateChecker.displayVersion)", action: nil, keyEquivalent: "")
+        versionItem.isEnabled = false
+        menu.addItem(versionItem)
+        menu.addItem(.separator())
+
         let captureItem = makeItem(L("Alan / Pencere Yakala"), #selector(captureRect(_:)), key: capture.character.lowercased(), modifiers: capture.cocoaModifiers)
         captureItem.isEnabled = !recording
         menu.addItem(captureItem)
@@ -172,6 +192,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(makeItem(L("Kayıt Klasörünü Aç"), #selector(openFolder(_:)), key: ""))
         menu.addItem(makeItem(L("Ayarlar…"), #selector(openSettings(_:)), key: ","))
+        menu.addItem(makeItem(L("Güncellemeleri denetle…"), #selector(checkForUpdates(_:)), key: ""))
         menu.addItem(.separator())
         menu.addItem(makeItem(L("SS+'ı Kapat"), #selector(quitApp(_:)), key: "q"))
         return menu
@@ -199,6 +220,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings(_ sender: Any?) {
         SettingsWindowController.shared.show()
+    }
+
+    @objc private func checkForUpdates(_ sender: Any?) {
+        Task { await UpdateChecker.check(userInitiated: true) }
     }
 
     @objc private func quitApp(_ sender: Any?) {

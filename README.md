@@ -40,6 +40,16 @@ Swift + SwiftUI + ScreenCaptureKit ile yazılmıştır. Harici bağımlılık yo
 
 ---
 
+## Web sitesi
+
+<https://ssplus.vercel.app> — özellikler, [sürüm geçmişi](https://ssplus.vercel.app/changelog),
+[gizlilik politikası](https://ssplus.vercel.app/privacy) ve [kullanım koşulları](https://ssplus.vercel.app/terms).
+Uygulama günde bir kez `version.json` dosyasını okuyarak yeni sürüm olup olmadığını denetler
+(Ayarlar → Genel → Hakkında'dan kapatılabilir ya da elle denetlenebilir). Site kaynağı `site/`
+klasöründedir; `npx vercel deploy --prod --cwd site` ile yayımlanır.
+
+---
+
 ## İndir ve kur
 
 En güncel sürümü [Releases](../../releases/latest) sayfasından `SS+-<sürüm>.dmg`
