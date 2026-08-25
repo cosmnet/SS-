@@ -17,14 +17,9 @@ enum Uninstaller {
     static func present() {
         let alert = NSAlert()
         alert.messageText = L("SS+ kaldırılsın mı?")
-        alert.informativeText = L("""
-        İzinleri sıfırla: Sistem Ayarları → Gizlilik ve Güvenlik'teki SS+ kayıtları \
-        (Ekran Kaydı vb.) silinir ve uygulama kapanır; bir sonraki açılışta izin yeniden istenir. \
-        Ayarların ve dosyaların korunur.
-
-        Tamamen kaldır: Buna ek olarak tüm ayarlar, Google oturumu ve pano arşivi silinir, \
-        uygulama Çöp'e taşınır. Kaydettiğin ekran görüntüleri ve videolar silinmez.
-        """)
+        alert.informativeText = L("İzinleri sıfırla: Sistem Ayarları → Gizlilik ve Güvenlik'teki SS+ kayıtları (Ekran Kaydı vb.) silinir ve uygulama kapanır; bir sonraki açılışta izin yeniden istenir. Ayarların ve dosyaların korunur.")
+            + "\n\n"
+            + L("Tamamen kaldır: Buna ek olarak tüm ayarlar, Google oturumu ve pano arşivi silinir, uygulama Çöp'e taşınır. Kaydettiğin ekran görüntüleri ve videolar silinmez.")
         alert.alertStyle = .warning
         alert.addButton(withTitle: L("İzinleri sıfırla ve çık"))
         alert.addButton(withTitle: L("Tamamen kaldır"))

@@ -107,6 +107,9 @@ final class SettingsStore: ObservableObject {
     @Published var fps: Int {
         didSet { d.set(fps, forKey: "fps") }
     }
+    /// Ses kaydı (Pro): sistem sesi (macOS 13+) ve mikrofon (macOS 15+) aynı dosyaya
+    /// iki ayrı ses parçası olarak yazılır. Pro etkinken varsayılan AÇIK;
+    /// Pro değilse yakalama `pro && recordAudio` kapısı nedeniyle etkisizdir.
     @Published var recordAudio: Bool {
         didSet { d.set(recordAudio, forKey: "recordAudio") }
     }
@@ -137,7 +140,8 @@ final class SettingsStore: ObservableObject {
     @Published var previewSeconds: Double {
         didSet { d.set(previewSeconds, forKey: "previewSeconds") }
     }
-    /// Boştayken çentikteki ada gösterilsin mi (kayıt sırasında daima gösterilir)
+    /// Boştayken ada gösterilsin mi. Varsayılan KAPALI: çentik / menü çubuğu sessiz
+    /// kalır; kayıt ve seçim sırasında ada daima görünür.
     @Published var islandEnabled: Bool {
         didSet { d.set(islandEnabled, forKey: "islandEnabled") }
     }
@@ -227,7 +231,7 @@ final class SettingsStore: ObservableObject {
         playSound = d.object(forKey: "playSound") as? Bool ?? true
         showPreview = d.object(forKey: "showPreview") as? Bool ?? true
         fps = d.object(forKey: "fps") as? Int ?? 30
-        recordAudio = d.object(forKey: "recordAudio") as? Bool ?? false
+        recordAudio = d.object(forKey: "recordAudio") as? Bool ?? true
         lastModeRaw = d.string(forKey: "lastModeRaw") ?? "rect"
         videoFormat = d.string(forKey: "videoFormat") ?? "mov"
         videoCodec = d.string(forKey: "videoCodec") ?? "h264"
@@ -235,7 +239,7 @@ final class SettingsStore: ObservableObject {
         smartWindowDetect = d.object(forKey: "smartWindowDetect") as? Bool ?? true
         editAfterCapture = d.object(forKey: "editAfterCapture") as? Bool ?? false
         previewSeconds = d.object(forKey: "previewSeconds") as? Double ?? 5
-        islandEnabled = d.object(forKey: "islandEnabled") as? Bool ?? true
+        islandEnabled = d.object(forKey: "islandEnabled") as? Bool ?? false
         clipboardHistoryEnabled = d.object(forKey: "clipboardHistoryEnabled") as? Bool ?? false
         clearClipboardHistoryOnQuit = d.object(forKey: "clearClipboardHistoryOnQuit") as? Bool ?? false
         driveUploadEnabled = d.object(forKey: "driveUploadEnabled") as? Bool ?? false

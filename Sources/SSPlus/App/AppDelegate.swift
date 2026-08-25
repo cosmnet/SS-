@@ -16,6 +16,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        // Geliştirici tanılaması: sistem sesi gerçekten geliyor mu? (bkz. AudioProbe)
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "--record-probe") {
+            let seconds = arguments.indices.contains(index + 1) ? (Double(arguments[index + 1]) ?? 5) : 5
+            if #available(macOS 15, *) {
+                Task { @MainActor in
+                    exit(await RecordProbe.run(seconds: seconds))
+                }
+            } else {
+                print("--record-probe macOS 15 ve üzeri ister.")
+                exit(2)
+            }
+            return
+        }
+        if let index = arguments.firstIndex(of: "--audio-probe") {
+            let seconds = arguments.indices.contains(index + 1) ? (Double(arguments[index + 1]) ?? 5) : 5
+            if #available(macOS 13, *) {
+                Task { @MainActor in
+                    exit(await AudioProbe.run(seconds: seconds, includeSelf: arguments.contains("--include-self")))
+                }
+            } else {
+                print("--audio-probe macOS 13 ve üzeri ister.")
+                exit(2)
+            }
+            return
+        }
         _ = AppState.shared
         setupStatusItem()
         let exporting = ProcessInfo.processInfo.arguments.contains("--export-ui-shots")

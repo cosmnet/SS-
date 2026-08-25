@@ -7,10 +7,37 @@ APP_NAME="SS+"
 BUNDLE="dist/${APP_NAME}.app"
 ICON_SRC="Resources/SSPlus.icns"
 
-# Sürüm: make_release.sh VERSION ortam değişkeniyle geçirir; elle çalıştırmada
-# 1.0.0. Derleme numarası git commit sayısından türer, böylece her sürüm
-# Info.plist'te de artar (eskiden hep "1.0 (1)" kalıyordu).
-VERSION="${VERSION:-1.0.0}"
+# Sürüm kaynağı, öncelik sırasıyla:
+#   1) VERSION ortam değişkeni (make_release.sh böyle geçirir)
+#   2) HEAD'den erişilen son "vX.Y.Z" git etiketi ("v" öneki atılır)
+#   3) site/version.json "version" alanı (etiketsiz kopya / tarball)
+#   4) 1.0.0
+# Eskiden elle çalıştırmada hep 1.0.0 yazılıyordu; yerel derleme bu yüzden
+# sitedeki sürümü "yeni sürüm" diye bildiriyordu. Derleme numarası git commit
+# sayısından türer; aynı sürümün yeniden derlemelerini ayırt eder.
+if [[ -n "${VERSION:-}" ]]; then
+  VERSION_SOURCE="VERSION ortam değişkeni"
+else
+  TAG="$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)"
+  if [[ -n "$TAG" ]]; then
+    VERSION="${TAG#v}"
+    VERSION_SOURCE="git etiketi ${TAG}"
+    AHEAD="$(git rev-list --count "${TAG}..HEAD" 2>/dev/null || echo 0)"
+    if [[ "$AHEAD" != "0" ]]; then VERSION_SOURCE+=" (+${AHEAD} commit)"; fi
+    if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then VERSION_SOURCE+=" · kaydedilmemiş değişiklikler var"; fi
+  else
+    VERSION="$(sed -nE 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' site/version.json 2>/dev/null | head -1)"
+    if [[ -n "$VERSION" ]]; then
+      VERSION_SOURCE="site/version.json"
+    else
+      VERSION="1.0.0"
+      VERSION_SOURCE="varsayılan"
+    fi
+  fi
+fi
+if [[ ! "$VERSION" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]]; then
+  echo "⚠︎ Sürüm '${VERSION}' x.y.z biçiminde değil; CFBundleShortVersionString yine de bu olacak."
+fi
 BUILD="${BUILD:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 
 # Universal (Apple Silicon + Intel) derleme, Xcode gerekmeden: her dilim kendi
@@ -68,7 +95,7 @@ else
   echo "     (Resources/GoogleOAuth.example.plist dosyasını kopyalayıp doldur.)"
 fi
 
-echo "  Sürüm ${VERSION} (${BUILD})"
+echo "  Sürüm ${VERSION} (${BUILD}) — kaynak: ${VERSION_SOURCE}"
 cat > "${BUNDLE}/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -100,6 +127,8 @@ cat > "${BUNDLE}/Contents/Info.plist" <<PLIST
     <string>10.15</string>
     <key>LSUIElement</key>
     <true/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>SS+ uses the microphone only when you enable "Record microphone" for video recordings.</string>
     <key>NSHighResolutionCapable</key>
     <true/>
 </dict>

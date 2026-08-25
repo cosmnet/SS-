@@ -1,13 +1,30 @@
 #!/bin/zsh
 # SS+ — GitHub Releases'e yüklenecek dağıtım paketini üretir.
-#   Kullanım:  ./make_release.sh [sürüm]      örn: ./make_release.sh 1.0.0
+#   Kullanım:  ./make_release.sh <sürüm>      örn: ./make_release.sh 1.5.0   (sürüm zorunlu)
 # Çıktı:       dist/SS+-<sürüm>.dmg  (sürükle-bırak kurulum ekranlı, universal)
 set -e
 cd "$(dirname "$0")"
 
 APP_NAME="SS+"
 APP="dist/${APP_NAME}.app"
-VERSION="${1:-1.0.0}"
+VERSION="${1:-}"
+if [[ -z "$VERSION" ]]; then
+  echo "Kullanım: ./make_release.sh <sürüm>   örn: ./make_release.sh 1.5.0" >&2
+  exit 1
+fi
+if [[ ! "$VERSION" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]]; then
+  echo "✗ Sürüm x.y.z biçiminde olmalı: '${VERSION}'" >&2
+  exit 1
+fi
+# Uyarılar (hata değil): git etiketi ve site/version.json istenen sürümle uyuşmalı.
+TAG="$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)"
+if [[ "${TAG#v}" != "$VERSION" ]]; then
+  echo "  ⚠︎ HEAD'deki son etiket '${TAG:-yok}' ≠ ${VERSION}; yayımlamadan önce: git tag v${VERSION}"
+fi
+SITE_VERSION="$(sed -nE 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' site/version.json 2>/dev/null | head -1)"
+if [[ "$SITE_VERSION" != "$VERSION" ]]; then
+  echo "  ⚠︎ site/version.json '${SITE_VERSION:-yok}' diyor; sürüm denetimi için siteyi de ${VERSION} yap."
+fi
 VOL_NAME="SS+ ${VERSION}"
 # Dosya adında "+" kullanma: GitHub Releases yüklemesi bu karakterde hata veriyor.
 DMG="dist/SSPlus-${VERSION}.dmg"

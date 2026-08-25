@@ -1,7 +1,7 @@
 # SS+
 
 macOS için hafif ve hızlı bir ekran yakalama uygulaması. Google Drive yüklemesini açmadığın sürece hiçbir veri dışarı gönderilmez.
-Menü çubuğunda yaşar, ekranın üst ortasında **island** (dinamik ada) arayüzüyle açılır ve
+Menü çubuğunda yaşar, istersen ekranın üst ortasındaki **island** (dinamik ada) arayüzüyle açılır ve
 yakaladığın her şeyi sağ alt köşede küçük bir önizleme kartı olarak sunar.
 
 Swift + SwiftUI + ScreenCaptureKit ile yazılmıştır. Harici bağımlılık yoktur.
@@ -10,13 +10,18 @@ Swift + SwiftUI + ScreenCaptureKit ile yazılmıştır. Harici bağımlılık yo
 
 ## Özellikler
 
-- **Island arayüzü** — Çentikte duran, üzerine 1.2 sn bekleyince açılan kompakt araç çubuğu.
-  Yalnızca kayıt ve seçimde zorunlu görünür; ayarlardan tamamen kapatılabilir.
+- **Island arayüzü** — Çentikte (çentiksiz Mac'lerde menü çubuğunun altında) duran, üzerine 1.2 sn
+  bekleyince açılan kompakt araç çubuğu. Varsayılan olarak boşta **gizlidir**; **Ayarlar → Genel →
+  Yakalama → "Ada'yı (Island) boşta göster"** ile açılır. Kayıt ve seçim sırasında her zaman görünür.
 - **⌃⌘ –  ile anında yakalama** — Son kullandığın modu hatırlar (kısayol Ayarlar'dan değiştirilebilir).
   - **Alan** (dikdörtgen sürükleme, ⇧ ile kare)
   - **Pencere** — üzerine geldiğin pencereyi vurgular, tıklayınca yakalar
   - **Tüm ekran** — seçim sırasında `↩` ya da menüden
 - **Video kaydı** — ScreenCaptureKit + AVAssetWriter ile alan bazlı `.mov` kaydı (H.264).
+- **Ses kaydı (Pro)** — Tek ayar: **"Sesi kaydet (sistem + mikrofon)"**, Pro'da varsayılan açık.
+  Sistem sesi (macOS 13+) ve mikrofon (macOS 15+) aynı dosyaya **iki ayrı ses parçası** olarak
+  yazılır; kayıt sırasında adada canlı ses düzeyi göstergesi görünür (mikrofon için ilk
+  kullanımda izin sorulur).
 - **Önizleme kartı** — Yakaladıktan sonra sağ altta belirir; kopyalayabilir, Finder'da
   gösterebilir, silebilir, hatta doğrudan **başka bir uygulamaya sürükleyip bırakabilirsin**.
   Ayarlardaki süre (varsayılan 5 sn) sonunda kendiliğinden kapanır; üzerine gelirsen beklemeye alır.
@@ -32,7 +37,7 @@ Swift + SwiftUI + ScreenCaptureKit ile yazılmıştır. Harici bağımlılık yo
 - **Pro (demo)**
   - **Metin Kopyala (OCR)** — Görüntüdeki yazıyı Vision ile tanıyıp panoya alır
   - **60 FPS** video kaydı
-  - **Sistem sesi** kaydı
+  - **Ses kaydı** (sistem sesi + mikrofon, iki ayrı parça)
   - **HEVC** kodeği ve özel bit hızı
 
 > Pro özellikleri **Ayarlar → Pro → Etkinleştirme kodu** alanına geçerli bir kod
@@ -91,7 +96,10 @@ open "dist/SS+.app"
 ```
 
 `build_app.sh` şunları yapar: release derlemesi alır, `dist/SS+.app` paketini oluşturur,
-`Info.plist` dosyasını yazar ve paketi ad-hoc olarak imzalar.
+`Info.plist` dosyasını yazar ve paketi ad-hoc olarak imzalar. Sürüm numarasını sırayla `VERSION`
+ortam değişkeninden, HEAD'den erişilen son `vX.Y.Z` git etiketinden ya da `site/version.json`
+dosyasından alır (derleme numarası commit sayısıdır); böylece yerel derleme sitedeki sürümü
+"yeni sürüm" diye bildirmez.
 
 Sadece geliştirme derlemesi için:
 
@@ -99,10 +107,17 @@ Sadece geliştirme derlemesi için:
 swift build
 ```
 
+Sistem sesi tanılaması — kayıt sessiz çıkıyorsa ScreenCaptureKit'in bu Mac'te gerçekten ses verip
+vermediğini gösterir (uygulamanın kendi Ekran Kaydı izniyle çalışır; bir ses çalarken dene):
+
+```sh
+"dist/SS+.app/Contents/MacOS/SSPlus" --audio-probe 5   # 5 sn dinler, yarım saniyede bir tepe/RMS yazar
+```
+
 Dağıtıma hazır DMG üretmek için:
 
 ```sh
-./make_release.sh 1.0.0
+./make_release.sh 1.5.0   # sürüm zorunlu; yayımlamadan önce: git tag v1.5.0
 ```
 
 ---
@@ -125,7 +140,7 @@ SS+'ın oluşturduğu dosya ve klasörler); Google doğrulaması gerektirmez.
    ve iki değeri yaz. Dosya `.gitignore`'dadır; `build_app.sh` onu pakete ekler.
    (`swift run` için: `SSPLUS_GOOGLE_CLIENT_ID` / `SSPLUS_GOOGLE_CLIENT_SECRET` ortam değişkenleri.)
 
-Kullanıcı tarafı: **Ayarlar → Kayıt & Çıktı → Google Drive → Google ile oturum aç**. Tarayıcıda
+Kullanıcı tarafı: **Ayarlar → Genel → Google Drive → Google ile oturum aç**. Tarayıcıda
 onay verilir, SS+ Drive kökünde "SS+" klasörünü oluşturur. Yeniden kurulum ya da yeniden oturum
 açmada var olan klasör bulunup kullanılır (yeni kopya açılmaz); daha önce açılmış boş bir kopya
 varsa Drive'dan silebilirsin. Sonraki her ekran görüntüsü oraya
@@ -205,6 +220,10 @@ Sources/SSPlus/
     ├── StrokeSmoothing.swift   # Fırça sabitleyici + Catmull-Rom
     ├── Permissions.swift       # Ekran kaydı izni + onarım
     ├── Pro.swift               # Pro bayrağı + OCR servisi
+    ├── UpdateChecker.swift     # Siteden version.json ile sürüm denetimi
+    ├── VersionCompare.swift    # Sürüm dizgilerini bileşen bileşen sayısal karşılaştırma
+    ├── AudioLevel.swift        # PCM tampon tepe/RMS ölçümü (kayıt göstergesi)
+    ├── AudioProbe.swift        # --audio-probe: sistem sesi tanılaması
     └── HotKeyManager.swift     # Carbon global kısayollar
 ```
 

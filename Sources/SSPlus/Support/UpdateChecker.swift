@@ -14,20 +14,28 @@ enum UpdateChecker {
         let notes: String?
     }
 
-    static var currentVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+    /// Paketten okunan sürüm; paketlenmemiş (`swift run`) çalışmada nil.
+    static var bundleVersion: String? {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
     }
+
+    /// Karşılaştırma için: paketlenmemişse "0" (her yayın daha yeni sayılır).
+    static var currentVersion: String { bundleVersion ?? "0" }
 
     static var currentBuild: String? {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String
     }
 
-    /// "1.4.0 (12)" gibi görüntü metni.
+    /// "1.5.0 (19)" gibi görüntü metni; paketlenmemişse "dev".
     static var displayVersion: String {
-        currentBuild.map { "\(currentVersion) (\($0))" } ?? currentVersion
+        guard let version = bundleVersion else { return "dev" }
+        if let build = currentBuild, !build.isEmpty { return "\(version) (\(build))" }
+        return version
     }
 
     static func checkAutomaticallyIfDue() {
+        // swift run: pakette sürüm yok; her açılışta "yeni sürüm" diye uyarma.
+        guard bundleVersion != nil else { return }
         let settings = SettingsStore.shared
         guard settings.checkUpdatesAutomatically else { return }
         guard Date().timeIntervalSince(settings.lastUpdateCheck) > 24 * 3600 else { return }
@@ -54,8 +62,10 @@ enum UpdateChecker {
         }
     }
 
+    /// Bileşen bileşen sayısal karşılaştırma (bkz. VersionCompare): "1.10.0" > "1.9.0",
+    /// "1.5" == "1.5.0", "1.5.1-beta" → 1.5.1.
     static func isNewer(_ candidate: String, than current: String) -> Bool {
-        candidate.compare(current, options: .numeric) == .orderedDescending
+        VersionCompare.isNewer(candidate, than: current)
     }
 
     // MARK: Diyaloglar
@@ -63,7 +73,7 @@ enum UpdateChecker {
     private static func presentAvailable(_ info: Info) {
         let alert = NSAlert()
         alert.messageText = L("Yeni sürüm hazır: SS+ %@", info.version)
-        alert.informativeText = L("Şu anki sürüm %@. İndirip DMG'yi Applications klasörüne sürükleyerek güncelleyebilirsin.", currentVersion)
+        alert.informativeText = L("Şu anki sürüm %@. İndirip DMG'yi Applications klasörüne sürükleyerek güncelleyebilirsin.", displayVersion)
         alert.alertStyle = .informational
         alert.addButton(withTitle: L("İndir"))
         alert.addButton(withTitle: L("Sürüm geçmişi"))
@@ -82,7 +92,7 @@ enum UpdateChecker {
     private static func presentUpToDate() {
         let alert = NSAlert()
         alert.messageText = L("Güncelsin!")
-        alert.informativeText = L("SS+ %@ şu anda en yeni sürüm.", currentVersion)
+        alert.informativeText = L("SS+ %@ şu anda en yeni sürüm.", displayVersion)
         alert.alertStyle = .informational
         alert.addButton(withTitle: L("Tamam"))
         alert.addButton(withTitle: L("Sürüm geçmişi"))

@@ -234,6 +234,25 @@ enum Localization {
         "Güncellemeleri denetle": "Check for updates",
         "Güncellemeleri otomatik denetle": "Check for updates automatically",
         "Sürüm geçmişi": "Version history",
+        "Sürüm %@": "Version %@",
+        "Sistem sesi düzeyi": "System audio level",
+        "Ses düzeyi": "Audio level",
+        "Sesi kaydet (sistem + mikrofon)": "Record audio (system + microphone)",
+        "Sistem sesi ve mikrofon aynı dosyaya iki ayrı ses parçası olarak yazılır. Sistem sesi macOS 13, mikrofon macOS 15 ve üzeri ister; mikrofon için ilk kullanımda izin sorulur.":
+            "System audio and the microphone are written into the same file as two separate audio tracks. System audio needs macOS 13 or later, the microphone macOS 15 or later; microphone permission is asked on first use.",
+        "Ses Kaydı": "Audio Recording",
+        "Video kaydına sistem sesini ve mikrofonu dahil et": "Include system audio and your microphone in video recordings",
+        "SS+ mikrofona erişemiyor": "SS+ can't access the microphone",
+        "Sistem Ayarları → Gizlilik ve Güvenlik → Mikrofon bölümünde SS+ anahtarını aç. Kayıt mikrofon olmadan sürecek.":
+            "Turn on the SS+ switch in System Settings → Privacy & Security → Microphone. The recording will continue without the microphone.",
+        "Sistem Ayarları → Gizlilik ve Güvenlik → Ekran Kaydı listesinde SS+ anahtarını AÇIK duruma getir, sonra uygulamayı TAMAMEN kapatıp yeniden aç. macOS, verilen izni ancak uygulama yeniden başlatıldığında tanır.":
+            "In System Settings → Privacy & Security → Screen Recording, turn the SS+ switch ON, then quit the app COMPLETELY and reopen it. macOS recognizes the permission only after the app restarts.",
+        "Anahtar açık görünmesine rağmen çalışmıyorsa kayıt bozuk demektir (yeniden derleme sonrası imza değişimi buna yol açar). \"%@\" eski kaydı silip uygulamayı yeniden başlatır; macOS bu kez temiz bir izin penceresi gösterir.":
+            "If the switch looks ON but capture still fails, the permission record is stale (a signature change after rebuilding causes this). \"%@\" deletes the old record and relaunches the app; macOS then shows a fresh permission prompt.",
+        "İzinleri sıfırla: Sistem Ayarları → Gizlilik ve Güvenlik'teki SS+ kayıtları (Ekran Kaydı vb.) silinir ve uygulama kapanır; bir sonraki açılışta izin yeniden istenir. Ayarların ve dosyaların korunur.":
+            "Reset permissions: removes the SS+ entries in System Settings → Privacy & Security (Screen Recording and so on) and quits the app; permission is asked again on the next launch. Your settings and files are kept.",
+        "Tamamen kaldır: Buna ek olarak tüm ayarlar, Google oturumu ve pano arşivi silinir, uygulama Çöp'e taşınır. Kaydettiğin ekran görüntüleri ve videolar silinmez.":
+            "Remove completely: additionally deletes all settings, the Google session and the clipboard archive, and moves the app to the Trash. Your saved screenshots and videos are not deleted.",
         "Web sitesi": "Website",
         "Gizlilik politikası": "Privacy policy",
         "Güncelsin!": "You're up to date!",

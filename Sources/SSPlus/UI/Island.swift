@@ -77,6 +77,8 @@ final class IslandController {
         static let expandedWidth: CGFloat = 520
         static let selectingWidth: CGFloat = 520
         static let recordingWidth: CGFloat = 320
+        /// Sistem sesi düzeyi göstergesi için kayıt çubuğuna eklenen genişlik.
+        static let audioMeterExtra: CGFloat = 96
 
         /// Çentiğin ALTINA inen içerik yüksekliği.
         static let expandedDrop: CGFloat = 190
@@ -239,11 +241,13 @@ final class IslandController {
 
         // Çentiksiz Mac: menü çubuğunun ALTINA oturan klasik ada.
         guard m.hasNotch else {
-            let size: CGSize
+            var size: CGSize
             switch phase {
             case .idle:      size = isExpanded ? Layout.plainExpanded : Layout.plainCollapsed
             case .selecting: size = Layout.plainSelecting
-            case .recording: size = Layout.plainRecording
+            case .recording:
+                size = Layout.plainRecording
+                if AppState.shared.recordingAudioActive { size.width += Layout.audioMeterExtra }
             }
             let width = size.width.rounded()
             let height = size.height.rounded()
@@ -266,7 +270,9 @@ final class IslandController {
         switch phase {
         case .idle:      minWidth = Layout.expandedWidth;  drop = Layout.expandedDrop
         case .selecting: minWidth = Layout.selectingWidth; drop = Layout.selectingDrop
-        case .recording: minWidth = Layout.recordingWidth; drop = Layout.recordingDrop
+        case .recording:
+            minWidth = Layout.recordingWidth + (AppState.shared.recordingAudioActive ? Layout.audioMeterExtra : 0)
+            drop = Layout.recordingDrop
         }
 
         let bleed = IslandLayout.topBleed
@@ -566,6 +572,7 @@ struct IslandView: View {
             Text(app.recordingTimeString)
                 .font(.system(size: 14, weight: .semibold, design: .monospaced))
                 .foregroundColor(.white)
+            if app.recordingAudioActive { AudioLevelMeter(level: app.audioLevel, mic: app.recordingMicActive) }
             Spacer(minLength: 6)
             drawToggleButton
             stopButton(compact: true)
@@ -582,6 +589,7 @@ struct IslandView: View {
             Text(app.recordingTimeString)
                 .font(.system(size: 14, weight: .semibold, design: .monospaced))
                 .foregroundColor(.white)
+            if app.recordingAudioActive { AudioLevelMeter(level: app.audioLevel, mic: app.recordingMicActive) }
             Spacer()
             drawToggleButton
             stopButton(compact: false)
@@ -901,5 +909,43 @@ struct PulsingDot: View {
             .opacity(pulsing ? 0.35 : 1)
             .compatAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: pulsing)
             .onAppear { pulsing = true }
+    }
+}
+
+/// Kayıtta sistem sesi düzeyi — macOS "Giriş düzeyi" göstergesi tarzında: hoparlör simgesi +
+/// eşit boyda bir sıra dikey hap (segment) soldan sağa dolar. `level` 0…1 (−60…0 dBFS);
+/// sessizlikte tüm segmentler sönük kalır. Dolan segmentler tepeye yaklaştıkça sararıp kızarır.
+struct AudioLevelMeter: View {
+    var level: Float
+    var mic = false
+    private let segmentCount = 14
+
+    var body: some View {
+        HStack(spacing: 4) {
+            SymbolImage(name: mic ? "mic.fill" : "speaker.wave.2.fill")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundColor(.white.opacity(0.7))
+            HStack(spacing: 2) {
+                ForEach(0..<segmentCount, id: \.self) { index in
+                    Capsule(style: .continuous)
+                        .fill(color(for: index))
+                        .frame(width: 3, height: 12)
+                }
+            }
+        }
+        .frame(height: 16)
+        .compatAnimation(.linear(duration: 0.06), value: level)
+        .compatHelp(L("Ses düzeyi"))
+    }
+
+    /// Segment dolu mu? Doluysa konumuna göre yeşil / sarı / kırmızı; değilse sönük.
+    private func color(for index: Int) -> Color {
+        let lit = Int((level * Float(segmentCount)).rounded(.down))
+        guard index < lit else { return Color.white.opacity(0.16) }
+        switch Double(index) / Double(segmentCount) {
+        case ..<0.7: return Color.green
+        case ..<0.85: return Color.yellow
+        default: return Color.red
+        }
     }
 }

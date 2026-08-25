@@ -190,12 +190,6 @@ private func rowDivider() -> some View {
     Divider().opacity(0.6)
 }
 
-private var appVersion: String {
-    let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
-    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
-    return build.map { "\(short) (\($0))" } ?? short
-}
-
 // MARK: - Girişte başlat
 
 /// `SMAppService` ile oturum açılışında başlatma. Paketlenmemiş (`swift run`)
@@ -284,6 +278,7 @@ struct GeneralTab: View {
                 Toggle(L("Ada'yı (Island) boşta göster"), isOn: $settings.islandEnabled)
                     .toggleStyle(.checkbox)
             }
+            caption(L("Kapatılırsa ada yalnızca kayıt ve seçim sırasında görünür; çentik tamamen sessiz kalır."))
         }
 
         SettingsSection(title: L("Hakkında"), icon: "person.crop.circle") {
@@ -292,9 +287,10 @@ struct GeneralTab: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("SS+")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                    Text(appVersion)
+                    Text(L("Sürüm %@", UpdateChecker.displayVersion))
                         .font(.system(size: 11))
                         .foregroundColor(Color.secondary)
+                        .lineLimit(1)
                 }
                 Spacer()
                 Button(L("Güncellemeleri denetle")) {
@@ -516,11 +512,12 @@ struct OutputTab: View {
                 .frame(width: 110)
                 .disabled(!pro.isPro)
                 Spacer()
-                Toggle(L("Sistem sesini kaydet"), isOn: $settings.recordAudio)
+                Toggle(L("Sesi kaydet (sistem + mikrofon)"), isOn: $settings.recordAudio)
                     .toggleStyle(.checkbox)
                     .disabled(!pro.isPro)
                 if !pro.isPro { ProBadge() }
             }
+            caption(L("Sistem sesi ve mikrofon aynı dosyaya iki ayrı ses parçası olarak yazılır. Sistem sesi macOS 13, mikrofon macOS 15 ve üzeri ister; mikrofon için ilk kullanımda izin sorulur."))
             if !pro.isPro {
                 caption(L("Pro olmadan kayıt 30 fps, H.264 ve otomatik bit hızıyla yapılır."))
             }

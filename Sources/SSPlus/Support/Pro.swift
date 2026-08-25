@@ -13,7 +13,7 @@ final class ProManager: ObservableObject {
     static var features: [(icon: String, title: String, detail: String)] {[
         ("text.viewfinder", L("Metin Kopyala (OCR)"), L("Ekran görüntüsündeki yazıyı tek tıkla panoya al")),
         ("speedometer", L("60 FPS Video"), L("Akıcı, yüksek kare hızında ekran kaydı")),
-        ("speaker.wave.2.fill", L("Sistem Sesi"), L("Video kaydına sistem sesini dahil et")),
+        ("speaker.wave.2.fill", L("Ses Kaydı"), L("Video kaydına sistem sesini ve mikrofonu dahil et")),
         ("film", L("HEVC ve özel bit hızı"), L("Daha küçük dosya, daha yüksek kalite")),
         ("scroll", L("Kaydırmalı Yakalama"), L("Uzun sayfaları tek görüntüde birleştir (yakında)")),
     ]}

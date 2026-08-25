@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import Combine
 
 @MainActor
@@ -13,6 +14,15 @@ final class AppState: ObservableObject {
 
     @Published var phase: Phase = .idle
     @Published var recordingSeconds: Int = 0
+    /// Kayıtta sistem sesi alınıyor mu; ada göstergesi yalnızca o zaman çizilir.
+    @Published var recordingAudioActive = false
+    /// Ses düzeyi göstergesi: 0…1 (−60…0 dBFS tepe); hızlı yükselir, yavaş iner.
+    @Published var audioLevel: Float = 0
+    /// Mikrofon da kaydediliyor mu (göstergede mikrofon simgesi görünür).
+    @Published var recordingMicActive = false
+    /// Bu kayıtta ölçülen en yüksek tepe (doğrusal); sessiz kayıt tanısı için.
+    private var audioPeakThisRecording: Float = 0
+    private var applyCount = 0
     /// Global kısayol kaydı başarısız olduysa Ayarlar'da gösterilen uyarı.
     @Published var hotkeyWarning: String?
 
@@ -138,6 +148,16 @@ final class AppState: ObservableObject {
         let url = settings.saveFolder.appendingPathComponent(OutputPipeline.fileName(prefix: L("SS+ Kayıt"), ext: ext))
         try? FileManager.default.createDirectory(at: settings.saveFolder, withIntermediateDirectories: true)
 
+        // Mikrofon: ses kaydı (Pro) açıksa izni iste (macOS 15+). Reddedilirse kayıt mikrofonsuz sürer.
+        var micWanted = false
+        if pro && settings.recordAudio, #available(macOS 15, *) {
+            if await AVCaptureDevice.requestAccess(for: .audio) {
+                micWanted = true
+            } else {
+                presentMicrophoneDenied()
+            }
+        }
+
         let recorder = RecorderFactory.make(url: url)
         recorder.onFailure = { [weak self, weak recorder] error in
             Task { @MainActor in
@@ -145,17 +165,27 @@ final class AppState: ObservableObject {
                 self.handleStreamFailure(error, recorder: recorder)
             }
         }
+        recorder.onAudioLevel = { [weak self] reading in
+            Task { @MainActor in self?.applyAudioLevel(reading) }
+        }
         do {
             try await recorder.start(
                 globalRect: rect,
                 screen: screen,
                 fps: pro ? settings.fps : min(settings.fps, 30),
                 captureAudio: pro && settings.recordAudio,
+                captureMicrophone: micWanted,
                 showCursor: settings.showCursor
             )
             self.recorder = recorder
             recordingSeconds = 0
             recordingStart = Date()
+            recordingAudioActive = recorder.capturesAudio || recorder.capturesMicrophone
+            recordingMicActive = recorder.capturesMicrophone
+            audioLevel = 0
+            audioPeakThisRecording = 0
+            applyCount = 0
+            DebugLog.log("kayıt başladı: sistemSesi=\(recorder.capturesAudio) mikrofon=\(recorder.capturesMicrophone)")
             phase = .recording
             let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
                 Task { @MainActor in
@@ -218,7 +248,43 @@ final class AppState: ObservableObject {
         recordingTimer = nil
         recordingStart = nil
         recordingSeconds = 0
+        if recordingAudioActive, audioPeakThisRecording < 0.001 {
+            NSLog("SS+ kayıt: ses açıktı ama kayıt boyunca hiç ses ölçülmedi (tepe %.5f).", audioPeakThisRecording)
+        }
+        if recordingAudioActive {
+            DebugLog.log(String(format: "kayıt bitti: en yüksek tepe %.4f · applyAudioLevel çağrısı %d", audioPeakThisRecording, applyCount))
+        }
+        recordingAudioActive = false
+        recordingMicActive = false
+        audioLevel = 0
         phase = .idle
+    }
+
+    private func applyAudioLevel(_ reading: AudioLevelReading) {
+        guard isRecording else { return }
+        let value = AudioLevel.meterValue(peak: reading.peak)
+        applyCount += 1
+        if applyCount % 20 == 1 {
+            DebugLog.log(String(format: "applyAudioLevel #%d değer %.2f gösterge %.2f", applyCount, value, audioLevel))
+        }
+        // Hızlı atak, yavaş bırakma: gösterge titremesin.
+        audioLevel = value >= audioLevel ? value : max(value, audioLevel - 0.08)
+        audioPeakThisRecording = max(audioPeakThisRecording, reading.peak)
+    }
+
+    /// Mikrofon izni reddedildiğinde bilgilendirir; kayıt mikrofonsuz sürer.
+    private func presentMicrophoneDenied() {
+        let alert = NSAlert()
+        alert.messageText = L("SS+ mikrofona erişemiyor")
+        alert.informativeText = L("Sistem Ayarları → Gizlilik ve Güvenlik → Mikrofon bölümünde SS+ anahtarını aç. Kayıt mikrofon olmadan sürecek.")
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: L("Sistem Ayarları'nı Aç"))
+        alert.addButton(withTitle: L("Tamam"))
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn,
+           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     // MARK: - Hata

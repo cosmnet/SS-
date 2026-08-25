@@ -21,6 +21,19 @@
 <p class="lead">Every release of SS+. Download the latest version from the <a href="/#download">home page</a>.</p>
 
 <div class="rel">
+  <h3>1.6.0 <time datetime="2026-08-25">25 August 2026</time></h3>
+  <ul>
+    <li>Audio recording (Pro) is now a single setting: system audio and your microphone are recorded as two separate tracks in the same file (microphone needs macOS 15+; on by default with Pro).</li>
+    <li>Live audio level meter in the island while recording, driven by the actual captured samples — all PCM formats, including 24-bit microphones.</li>
+    <li>Recording a completely static screen area no longer fails with "No frames were captured"; the file is saved with its audio.</li>
+    <li>The island is now hidden when idle by default; turn it on in Settings → General → Capture.</li>
+    <li>Builds from source take their version from the git tag, so they no longer show a false "new version available" alert.</li>
+    <li>The screen-recording permission and uninstall dialogs are now fully translated.</li>
+    <li>Developer diagnostics: <code>--audio-probe</code> / <code>--record-probe</code> and an optional debug log.</li>
+  </ul>
+</div>
+
+<div class="rel">
   <h3>1.5.0 <time datetime="2026-08-25">25 August 2026</time></h3>
   <ul>
     <li>Runs on older Macs: minimum macOS is now 10.15 Catalina (Intel) / 11 Big Sur (Apple Silicon); the download is a universal build.</li>
