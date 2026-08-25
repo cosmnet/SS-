@@ -19,6 +19,8 @@ struct DriveFile: Decodable {
     let name: String?
     let webViewLink: String?
     let trashed: Bool?
+    let createdTime: String?
+    let appProperties: [String: String]?
 }
 
 struct DriveUser: Decodable {
@@ -54,10 +56,53 @@ enum GoogleDriveAPI {
         }
     }
 
+    /// Uygulamanın kendi klasörünü işaretleyen özel özellik: ad/konum
+    /// değişse de yeniden bulunabilsin (appProperties yalnızca bu istemciye görünür).
+    static let folderTag = ["ssplus": "folder"]
+
     static func createFolder(name: String) async throws -> DriveFile {
-        let body = try JSONSerialization.data(withJSONObject: ["name": name, "mimeType": folderMime])
-        let data = try await request("POST", "\(base)/files?fields=id,name,webViewLink", body: body, contentType: "application/json")
+        let body = try JSONSerialization.data(withJSONObject: [
+            "name": name,
+            "mimeType": folderMime,
+            "appProperties": folderTag,
+        ])
+        let data = try await request("POST", "\(base)/files?fields=id,name,webViewLink,createdTime,appProperties", body: body, contentType: "application/json")
         return try JSONDecoder().decode(DriveFile.self, from: data)
+    }
+
+    /// Klasöre etiketi sonradan ekler (etiketsiz eski derlemelerin klasörleri için).
+    static func tagFolder(fileID: String) async throws {
+        let body = try JSONSerialization.data(withJSONObject: ["appProperties": folderTag])
+        _ = try await request("PATCH", "\(base)/files/\(fileID)", body: body, contentType: "application/json")
+    }
+
+    /// Daha önce bu uygulamanın oluşturduğu klasörü bulur: önce etikete, sonra
+    /// ada göre. En ESKİ eşleşme döner (geçmişi taşıyan asıl klasör); yeniden
+    /// kurulumda açılmış boş kopyalar yok sayılır. `drive.file` kapsamında
+    /// files.list zaten yalnızca bu istemcinin oluşturduklarını döndürür.
+    static func findFolder(named name: String) async throws -> DriveFile? {
+        let escaped = name.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
+        let queries = [
+            "mimeType='\(folderMime)' and trashed=false and appProperties has { key='ssplus' and value='folder' }",
+            "mimeType='\(folderMime)' and trashed=false and name='\(escaped)'",
+        ]
+        struct FileList: Decodable { let files: [DriveFile] }
+        for q in queries {
+            var components = URLComponents(string: "\(base)/files")!
+            components.queryItems = [
+                URLQueryItem(name: "q", value: q),
+                URLQueryItem(name: "fields", value: "files(id,name,webViewLink,createdTime,appProperties)"),
+                URLQueryItem(name: "orderBy", value: "createdTime"),
+                URLQueryItem(name: "pageSize", value: "10"),
+                URLQueryItem(name: "spaces", value: "drive"),
+            ]
+            guard let url = components.url else { continue }
+            let data = try await request("GET", url.absoluteString)
+            if let first = try JSONDecoder().decode(FileList.self, from: data).files.first {
+                return first
+            }
+        }
+        return nil
     }
 
     static func rename(fileID: String, to name: String) async throws {
@@ -300,7 +345,9 @@ final class DriveUploadCoordinator {
         return (file, file.webViewLink.flatMap(URL.init))
     }
 
-    /// Ayarlardaki klasör kimliğini doğrular; yoksa/silinmişse adıyla yeniden oluşturur.
+    /// Ayarlardaki klasör kimliğini doğrular; yoksa (ör. yeniden kurulum) Drive'da
+    /// daha önce oluşturulmuş SS+ klasörünü ARAR ve onu benimser; o da yoksa
+    /// yenisini oluşturur. Böylece her yeniden kurulumda yeni "SS+" klasörü açılmaz.
     @discardableResult
     func ensureFolder() async throws -> String {
         let settings = SettingsStore.shared
@@ -308,8 +355,19 @@ final class DriveUploadCoordinator {
            let existing = try await GoogleDriveAPI.fetchFile(id: settings.driveFolderID) {
             return existing.id
         }
-        let name = settings.driveFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let created = try await GoogleDriveAPI.createFolder(name: name.isEmpty ? "SS+" : name)
+        let trimmed = settings.driveFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = trimmed.isEmpty ? "SS+" : trimmed
+
+        if let found = try await GoogleDriveAPI.findFolder(named: name) {
+            if found.appProperties?["ssplus"] != "folder" {
+                try? await GoogleDriveAPI.tagFolder(fileID: found.id)
+            }
+            if let foundName = found.name, !foundName.isEmpty { settings.driveFolderName = foundName }
+            settings.driveFolderID = found.id
+            return found.id
+        }
+
+        let created = try await GoogleDriveAPI.createFolder(name: name)
         settings.driveFolderID = created.id
         return created.id
     }

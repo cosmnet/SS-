@@ -106,7 +106,9 @@ SS+'ın oluşturduğu dosya ve klasörler); Google doğrulaması gerektirmez.
    (`swift run` için: `SSPLUS_GOOGLE_CLIENT_ID` / `SSPLUS_GOOGLE_CLIENT_SECRET` ortam değişkenleri.)
 
 Kullanıcı tarafı: **Ayarlar → Kayıt & Çıktı → Google Drive → Google ile oturum aç**. Tarayıcıda
-onay verilir, SS+ Drive kökünde "SS+" klasörünü oluşturur. Sonraki her ekran görüntüsü oraya
+onay verilir, SS+ Drive kökünde "SS+" klasörünü oluşturur. Yeniden kurulum ya da yeniden oturum
+açmada var olan klasör bulunup kullanılır (yeni kopya açılmaz); daha önce açılmış boş bir kopya
+varsa Drive'dan silebilirsin. Sonraki her ekran görüntüsü oraya
 yüklenir; "Bağlantıyla herkese açık paylaş" açıksa link panoya kopyalanır ve önizleme kartında
 "Drive linkini kopyala / Google Drive'da aç" düğmeleri belirir.
 
