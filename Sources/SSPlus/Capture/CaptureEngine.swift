@@ -19,16 +19,16 @@ enum CaptureError: LocalizedError {
     }
 }
 
+/// Ekran görüntüsü motoru — sürüme göre yönlendirir.
+///
+/// • macOS 14+: ScreenCaptureKit `SCScreenshotManager` (imleç, en iyi çözünürlük).
+/// • Daha eski (10.15–13): CoreGraphics `CGWindowListCreateImage`. SS+'ın kendi
+///   pencereleri `sharingType = .none` olduğundan her iki yolda da görüntüye girmez.
 enum CaptureEngine {
 
     static func displayID(for screen: NSScreen) -> CGDirectDisplayID {
         let key = NSDeviceDescriptionKey("NSScreenNumber")
         return (screen.deviceDescription[key] as? NSNumber)?.uint32Value ?? CGMainDisplayID()
-    }
-
-    static func scDisplay(for screen: NSScreen, in content: SCShareableContent) -> SCDisplay? {
-        let id = displayID(for: screen)
-        return content.displays.first { $0.displayID == id } ?? content.displays.first
     }
 
     /// Global Cocoa (alt-sol orijin) koordinatındaki dikdörtgeni,
@@ -42,11 +42,32 @@ enum CaptureEngine {
         )
     }
 
-    private static func ownWindows(in content: SCShareableContent) -> [SCWindow] {
-        let pid = ProcessInfo.processInfo.processIdentifier
-        return content.windows.filter { $0.owningApplication?.processID == pid }
+    @MainActor
+    static func capture(globalRect: CGRect, screen: NSScreen) async throws -> CGImage {
+        if #available(macOS 14, *) {
+            return try await SCKScreenshot.capture(globalRect: globalRect, screen: screen)
+        }
+        return try LegacyCapture.capture(globalRect: globalRect, screen: screen)
     }
 
+    @MainActor
+    static func captureWindow(id: CGWindowID, fallbackRect: CGRect, screen: NSScreen) async throws -> CGImage {
+        if #available(macOS 14, *) {
+            return try await SCKScreenshot.captureWindow(id: id, fallbackRect: fallbackRect, screen: screen)
+        }
+        return try LegacyCapture.captureWindow(id: id, fallbackRect: fallbackRect, screen: screen)
+    }
+
+    @MainActor
+    static func captureDisplay(screen: NSScreen) async throws -> CGImage {
+        try await capture(globalRect: screen.frame, screen: screen)
+    }
+}
+
+// MARK: - ScreenCaptureKit ortak parçalar (macOS 12.3+)
+
+@available(macOS 12.3, *)
+enum SCKContent {
     static func shareableContent() async throws -> SCShareableContent {
         do {
             return try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
@@ -55,29 +76,37 @@ enum CaptureEngine {
         }
     }
 
-    /// ScreenCaptureKit hatasını anlamlı bir SS+ hatasına çevirir.
-    ///
-    /// Eskiden buradaki HER hata "izin gerekiyor" sayılıyordu; ilgisiz bir
-    /// aksaklıkta bile izin uyarısı açıldığı için ayar penceresi durmadan
-    /// karşımıza çıkıyordu. Artık yalnızca gerçek izin sorunları öyle işaretlenir:
-    /// sistem ön kontrolü olumsuzsa ya da ScreenCaptureKit açıkça
-    /// `SCStreamErrorUserDeclined` (-3801) döndüyse.
-    private static func mapped(_ error: Error) -> Error {
+    static func scDisplay(for screen: NSScreen, in content: SCShareableContent) -> SCDisplay? {
+        let id = CaptureEngine.displayID(for: screen)
+        return content.displays.first { $0.displayID == id } ?? content.displays.first
+    }
+
+    static func ownWindows(in content: SCShareableContent) -> [SCWindow] {
+        let pid = ProcessInfo.processInfo.processIdentifier
+        return content.windows.filter { $0.owningApplication?.processID == pid }
+    }
+
+    /// ScreenCaptureKit hatasını anlamlı bir SS+ hatasına çevirir: yalnızca
+    /// gerçek izin sorunları (ön kontrol olumsuz ya da -3801) izin hatası sayılır.
+    static func mapped(_ error: Error) -> Error {
         if !CGPreflightScreenCaptureAccess() { return CaptureError.permissionDenied }
         if (error as NSError).code == -3801 { return CaptureError.permissionDenied }
         return error
     }
+}
 
-    // MARK: - Ekran görüntüleri
+// MARK: - ScreenCaptureKit ekran görüntüsü (macOS 14+)
 
+@available(macOS 14, *)
+enum SCKScreenshot {
     @MainActor
     static func capture(globalRect: CGRect, screen: NSScreen) async throws -> CGImage {
-        let content = try await shareableContent()
-        guard let display = scDisplay(for: screen, in: content) else { throw CaptureError.noDisplay }
-        let filter = SCContentFilter(display: display, excludingWindows: ownWindows(in: content))
+        let content = try await SCKContent.shareableContent()
+        guard let display = SCKContent.scDisplay(for: screen, in: content) else { throw CaptureError.noDisplay }
+        let filter = SCContentFilter(display: display, excludingWindows: SCKContent.ownWindows(in: content))
         let scale = screen.backingScaleFactor
         let config = SCStreamConfiguration()
-        config.sourceRect = localTopLeftRect(globalRect, on: screen)
+        config.sourceRect = CaptureEngine.localTopLeftRect(globalRect, on: screen)
         config.width = Int(globalRect.width * scale)
         config.height = Int(globalRect.height * scale)
         config.showsCursor = SettingsStore.shared.showCursor
@@ -87,7 +116,7 @@ enum CaptureEngine {
 
     @MainActor
     static func captureWindow(id: CGWindowID, fallbackRect: CGRect, screen: NSScreen) async throws -> CGImage {
-        let content = try await shareableContent()
+        let content = try await SCKContent.shareableContent()
         guard let window = content.windows.first(where: { $0.windowID == id }) else {
             // Pencere kaybolduysa çerçevesini ekrandan kırp
             return try await capture(globalRect: fallbackRect, screen: screen)
@@ -101,9 +130,34 @@ enum CaptureEngine {
         config.captureResolution = .best
         return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
     }
+}
 
-    @MainActor
-    static func captureDisplay(screen: NSScreen) async throws -> CGImage {
-        try await capture(globalRect: screen.frame, screen: screen)
+// MARK: - CoreGraphics yolu (macOS 10.15 – 13)
+
+enum LegacyCapture {
+    /// Cocoa global (alt-sol orijin) → CoreGraphics global (birincil ekranın üst-sol köşesi).
+    static func cgRect(fromCocoa rect: CGRect) -> CGRect {
+        let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+        return CGRect(x: rect.minX, y: primaryHeight - rect.maxY, width: rect.width, height: rect.height)
+    }
+
+    static func capture(globalRect: CGRect, screen: NSScreen) throws -> CGImage {
+        guard CGPreflightScreenCaptureAccess() else { throw CaptureError.permissionDenied }
+        guard let image = CGWindowListCreateImage(
+            cgRect(fromCocoa: globalRect),
+            .optionOnScreenOnly,
+            kCGNullWindowID,
+            [.bestResolution]
+        ) else { throw CaptureError.noDisplay }
+        return image
+    }
+
+    static func captureWindow(id: CGWindowID, fallbackRect: CGRect, screen: NSScreen) throws -> CGImage {
+        guard CGPreflightScreenCaptureAccess() else { throw CaptureError.permissionDenied }
+        if let image = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .bestResolution]),
+           image.width > 1, image.height > 1 {
+            return image
+        }
+        return try capture(globalRect: fallbackRect, screen: screen)
     }
 }

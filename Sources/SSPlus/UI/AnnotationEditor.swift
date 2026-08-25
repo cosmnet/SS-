@@ -78,7 +78,7 @@ struct AnnotationColorItem: Identifiable {
     let id: Int
     let title: String
     let color: NSColor
-    var swiftUIColor: Color { Color(nsColor: color) }
+    var swiftUIColor: Color { Color.from(color) }
 }
 
 enum AnnotationPalette {
@@ -474,8 +474,7 @@ struct AnnotationToolbarView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.ultraThinMaterial)
+            MaterialFill(shape: RoundedRectangle(cornerRadius: 14, style: .continuous))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -502,10 +501,10 @@ struct AnnotationToolbarView: View {
         return Button {
             model.tool = tool
         } label: {
-            Image(systemName: tool.icon)
+            SymbolImage(name: tool.icon)
                 .font(.system(size: 13, weight: .medium))
                 .frame(width: 30, height: 26)
-                .foregroundStyle(selected ? Color.black : Color.white.opacity(0.85))
+                .foregroundColor(selected ? Color.black : Color.white.opacity(0.85))
                 .background(
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
                         .fill(selected ? Color.white.opacity(0.92) : Color.white.opacity(0.08))
@@ -513,7 +512,7 @@ struct AnnotationToolbarView: View {
                 .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
         .buttonStyle(.plain)
-        .help("\(tool.title) (\(tool.shortcut))")
+        .compatHelp("\(tool.title) (\(tool.shortcut))")
     }
 
     private func colorButton(_ item: AnnotationColorItem) -> some View {
@@ -535,7 +534,7 @@ struct AnnotationToolbarView: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .help(item.title)
+        .compatHelp(item.title)
     }
 
     private func thicknessButton(_ value: AnnotationThickness) -> some View {
@@ -546,7 +545,7 @@ struct AnnotationToolbarView: View {
             Text(value.title)
                 .font(.system(size: 11, weight: .bold))
                 .frame(width: 24, height: 24)
-                .foregroundStyle(selected ? Color.black : Color.white.opacity(0.85))
+                .foregroundColor(selected ? Color.black : Color.white.opacity(0.85))
                 .background(
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .fill(selected ? Color.white.opacity(0.92) : Color.white.opacity(0.08))
@@ -554,15 +553,15 @@ struct AnnotationToolbarView: View {
                 .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
         .buttonStyle(.plain)
-        .help("\(L("Kalınlık")): \(value.title)")
+        .compatHelp("\(L("Kalınlık")): \(value.title)")
     }
 
     private func iconButton(_ icon: String, help: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: icon)
+            SymbolImage(name: icon)
                 .font(.system(size: 12, weight: .semibold))
                 .frame(width: 28, height: 26)
-                .foregroundStyle(Color.white.opacity(enabled ? 0.85 : 0.28))
+                .foregroundColor(Color.white.opacity(enabled ? 0.85 : 0.28))
                 .background(
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
                         .fill(Color.white.opacity(0.08))
@@ -571,18 +570,18 @@ struct AnnotationToolbarView: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
-        .help(help)
+        .compatHelp(help)
     }
 
     private var primaryButton: some View {
         Button(action: actions.done) {
             HStack(spacing: 5) {
-                Image(systemName: "checkmark")
+                SymbolImage(name: "checkmark")
                     .font(.system(size: 11, weight: .bold))
                 Text(L("Bitti"))
                     .font(.system(size: 12, weight: .semibold))
             }
-            .foregroundStyle(Color.black)
+            .foregroundColor(Color.black)
             .padding(.horizontal, 12)
             .frame(height: 26)
             .background(
@@ -592,7 +591,7 @@ struct AnnotationToolbarView: View {
             .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
         .buttonStyle(.plain)
-        .help(L("Çizimleri uygula ve aktar (Enter)"))
+        .compatHelp(L("Çizimleri uygula ve aktar (Enter)"))
     }
 
     private func textButton(
@@ -604,7 +603,7 @@ struct AnnotationToolbarView: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(tint.opacity(0.9))
+                .foregroundColor(tint.opacity(0.9))
                 .padding(.horizontal, 10)
                 .frame(height: 26)
                 .background(
@@ -614,7 +613,7 @@ struct AnnotationToolbarView: View {
                 .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
         .buttonStyle(.plain)
-        .help(help)
+        .compatHelp(help)
     }
 }
 

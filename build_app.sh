@@ -13,26 +13,27 @@ ICON_SRC="Resources/SSPlus.icns"
 VERSION="${VERSION:-1.0.0}"
 BUILD="${BUILD:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 
-# Universal (Apple Silicon + Intel) derleme: uygulama internetten indirilip
-# her Mac'te çalışacağı için iki mimariyi de içeren tek ikili üretiyoruz.
-# Çoklu mimari SwiftPM'de tam Xcode'un xcbuild'ini ister; yalnızca Command
-# Line Tools kuruluysa (xcode-select bir Xcode.app göstermiyorsa) yerel
-# mimariye düşülür — yerel test için yeterli, dağıtım için Xcode seçilmeli.
-if [[ "$(xcode-select -p 2>/dev/null)" == *"Xcode.app"* ]]; then
-  ARCH_FLAGS=(--arch arm64 --arch x86_64)
-  echo "▶︎ Release derleniyor (universal: arm64 + x86_64)…"
-else
-  ARCH_FLAGS=()
-  echo "▶︎ Release derleniyor (yalnızca $(uname -m); universal için Xcode gerekir:"
-  echo "   sudo xcode-select -s /Applications/Xcode.app)…"
-fi
-swift build -c release "${ARCH_FLAGS[@]}"
-
-BIN="$(swift build -c release "${ARCH_FLAGS[@]}" --show-bin-path)/SSPlus"
-if [[ ! -f "$BIN" ]]; then
-  echo "✗ Derlenen ikili bulunamadı: $BIN"
-  exit 1
-fi
+# Universal (Apple Silicon + Intel) derleme, Xcode gerekmeden: her dilim kendi
+# hedef üçlüsüyle derlenir ve lipo ile birleştirilir.
+#   x86_64 → macOS 10.15 Catalina ve üzeri (Intel Mac'ler)
+#   arm64  → macOS 11 ve üzeri (Apple Silicon'un ilk sürümü)
+# Swift eşzamanlılık çalışma zamanı 10.15–11'de sistemde bulunmadığından
+# libswift_Concurrency.dylib pakete (Contents/Frameworks) eklenir; ikili
+# @executable_path/../Frameworks rpath'ini taşır (Package.swift).
+MIN_INTEL="10.15"
+MIN_ARM="11.0"
+echo "▶︎ Release derleniyor (universal: x86_64 ≥ ${MIN_INTEL}, arm64 ≥ ${MIN_ARM})…"
+swift build -c release --triple "x86_64-apple-macosx${MIN_INTEL}"
+swift build -c release --triple "arm64-apple-macosx${MIN_ARM}"
+BIN_X86=".build/x86_64-apple-macosx/release/SSPlus"
+BIN_ARM=".build/arm64-apple-macosx/release/SSPlus"
+for b in "$BIN_X86" "$BIN_ARM"; do
+  if [[ ! -f "$b" ]]; then echo "✗ Derlenen ikili bulunamadı: $b"; exit 1; fi
+done
+mkdir -p .build/universal
+BIN=".build/universal/SSPlus"
+lipo -create "$BIN_X86" "$BIN_ARM" -output "$BIN"
+echo "  Mimariler: $(lipo -archs "$BIN")"
 
 if [[ ! -f "$ICON_SRC" ]]; then
   echo "▶︎ Uygulama ikonu üretiliyor…"
@@ -47,6 +48,16 @@ mkdir -p "${BUNDLE}/Contents/Resources"
 cp "$BIN" "${BUNDLE}/Contents/MacOS/SSPlus"
 chmod +x "${BUNDLE}/Contents/MacOS/SSPlus"
 cp "$ICON_SRC" "${BUNDLE}/Contents/Resources/SSPlus.icns"
+
+# Swift eşzamanlılık geri dağıtım kütüphanesi (macOS 10.15–11 için).
+SWIFT_COMPAT_DIR="$(dirname "$(xcrun --find swift)")/../lib/swift-5.5/macosx"
+if [[ -f "${SWIFT_COMPAT_DIR}/libswift_Concurrency.dylib" ]]; then
+  mkdir -p "${BUNDLE}/Contents/Frameworks"
+  cp "${SWIFT_COMPAT_DIR}/libswift_Concurrency.dylib" "${BUNDLE}/Contents/Frameworks/"
+  echo "  libswift_Concurrency.dylib pakete eklendi (macOS 10.15–11 desteği)."
+else
+  echo "  ⚠︎ libswift_Concurrency.dylib bulunamadı; macOS 12'den eski sürümlerde uygulama açılmaz."
+fi
 
 # Google Drive: geliştiricinin OAuth istemci kimliği (git'e girmez).
 if [[ -f "Resources/GoogleOAuth.plist" ]]; then
@@ -86,7 +97,7 @@ cat > "${BUNDLE}/Contents/Info.plist" <<PLIST
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.utilities</string>
     <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
+    <string>10.15</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSHighResolutionCapable</key>
@@ -114,10 +125,10 @@ fi
 
 if [[ -n "$SIGN_ID" ]]; then
   echo "  Kararlı kimlik bulundu: ${SIGN_ID}"
-  codesign --force --sign "$SIGN_ID" "$BUNDLE"
+  codesign --force --deep --sign "$SIGN_ID" "$BUNDLE"
   echo "  ✓ Kimlik sabit olduğu için Ekran Kaydı izni yeniden derlemelerden sonra da korunur."
 else
-  codesign --force --sign - "$BUNDLE"
+  codesign --force --deep --sign - "$BUNDLE"
   echo "  ⚠︎ Kararlı imzalama kimliği bulunamadı; geçici (ad-hoc) imza kullanıldı."
   echo "     macOS izinleri imza kimliğine bağladığı için her yeniden derlemede"
   echo "     SS+ yeni bir uygulama sayılır ve Ekran Kaydı izni geçersiz kalır."

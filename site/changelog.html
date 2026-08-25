@@ -21,6 +21,16 @@
 <p class="lead">Every release of SS+. Download the latest version from the <a href="/#download">home page</a>.</p>
 
 <div class="rel">
+  <h3>1.5.0 <time datetime="2026-08-25">25 August 2026</time></h3>
+  <ul>
+    <li>Runs on older Macs: minimum macOS is now 10.15 Catalina (Intel) / 11 Big Sur (Apple Silicon); the download is a universal build.</li>
+    <li>Pre-macOS 14 Macs use a CoreGraphics screenshot engine; pre-12.3 Macs record with AVFoundation (H.264 .mov, no system audio).</li>
+    <li>Launch at login works on all supported versions (LaunchAgent on macOS 10.15–12).</li>
+    <li>Interface falls back gracefully on macOS 10.15/11 (no SF Symbols or materials there); the notch island needs macOS 12+.</li>
+  </ul>
+</div>
+
+<div class="rel">
   <h3>1.4.0 <time datetime="2026-08-25">25 August 2026</time></h3>
   <ul>
     <li>Google Drive: reinstalling or signing in again now reuses your existing SS+ folder — no more duplicate folders.</li>

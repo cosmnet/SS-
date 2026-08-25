@@ -408,7 +408,7 @@ struct IslandView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: layoutKey)
+        .compatAnimation(.spring(response: 0.34, dampingFraction: 0.86), value: layoutKey)
     }
 
     /// Çentiğin altına sarkan gövde: üst kenarı çentiğin alt kenarına yapışık
@@ -420,12 +420,7 @@ struct IslandView: View {
     /// Gölge de aşağı yönlüdür (yarıçap < kaydırma) — böylece menü çubuğunun
     /// üzerine karanlık bir hâle düşmez.
     private var descendingShape: some View {
-        UnevenRoundedRectangle(
-            topLeadingRadius: 0,
-            bottomLeadingRadius: 22,
-            bottomTrailingRadius: 22,
-            topTrailingRadius: 0
-        )
+        BottomRoundedRectangle(radius: 22)
         .fill(Color.black)
         .shadow(color: .black.opacity(0.38), radius: 10, y: 8)
     }
@@ -528,7 +523,7 @@ struct IslandView: View {
             SSPlusLogoView(size: 15)
             Text("SS+")
                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundColor(.white.opacity(0.9))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -543,7 +538,7 @@ struct IslandView: View {
                     SSPlusLogoView(size: 17)
                     Text("SS+")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                     if pro.isPro { proBadge }
                 }
                 Spacer(minLength: 8)
@@ -570,7 +565,7 @@ struct IslandView: View {
             PulsingDot()
             Text(app.recordingTimeString)
                 .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
             Spacer(minLength: 6)
             drawToggleButton
             stopButton(compact: true)
@@ -583,10 +578,10 @@ struct IslandView: View {
             PulsingDot()
             Text("REC")
                 .font(.system(size: 11, weight: .heavy, design: .rounded))
-                .foregroundStyle(.red)
+                .foregroundColor(.red)
             Text(app.recordingTimeString)
                 .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
             Spacer()
             drawToggleButton
             stopButton(compact: false)
@@ -619,26 +614,26 @@ struct IslandView: View {
             .font(.system(size: 9, weight: .heavy, design: .rounded))
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
-            .background(Capsule().fill(.linearGradient(
-                colors: [.pink, .purple],
+            .background(Capsule().fill(LinearGradient(
+                gradient: Gradient(colors: [.pink, .purple]),
                 startPoint: .leading,
                 endPoint: .trailing
             )))
-            .foregroundStyle(.white)
+            .foregroundColor(.white)
     }
 
     private var settingsButton: some View {
         Button {
             SettingsWindowController.shared.show()
         } label: {
-            Image(systemName: "gearshape.fill")
+            SymbolImage(name: "gearshape.fill")
                 .font(.system(size: 12))
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundColor(.white.opacity(0.55))
                 .frame(width: 20, height: 20)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(L("Ayarlar"))
+        .compatHelp(L("Ayarlar"))
     }
 
     /// Kayıt sırasında ekrana çizim katmanını aç/kapat.
@@ -646,15 +641,15 @@ struct IslandView: View {
         Button {
             NotificationCenter.default.post(name: .ssPlusToggleDrawOverlay, object: nil)
         } label: {
-            Image(systemName: "pencil.tip.crop.circle")
+            SymbolImage(name: "pencil.tip.crop.circle")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundColor(.white.opacity(0.8))
                 .frame(width: 22, height: 22)
                 .background(Circle().fill(Color.white.opacity(0.1)))
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .help(L("Kayıt sırasında çiz"))
+        .compatHelp(L("Kayıt sırasında çiz"))
     }
 
     private func stopButton(compact: Bool) -> some View {
@@ -662,7 +657,7 @@ struct IslandView: View {
             AppState.shared.stopRecording()
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: "stop.fill")
+                SymbolImage(name: "stop.fill")
                     .font(.system(size: compact ? 9 : 10, weight: .bold))
                 Text(L("Durdur"))
                     .font(.system(size: compact ? 11 : 12, weight: .semibold))
@@ -670,11 +665,11 @@ struct IslandView: View {
             .padding(.horizontal, compact ? 10 : 12)
             .padding(.vertical, compact ? 4.5 : 6)
             .background(Capsule().fill(Color.red))
-            .foregroundStyle(.white)
+            .foregroundColor(.white)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .help(L("Kaydı durdur"))
+        .compatHelp(L("Kaydı durdur"))
     }
 
     // MARK: Seçim satırı
@@ -682,16 +677,16 @@ struct IslandView: View {
     private func selectingRow(mode: SelectionMode, style: SelectionStyle) -> some View {
         HStack(spacing: 10) {
             if style == .recording {
-                Label(L("Kayıt alanı seç"), systemImage: "record.circle")
+                CompatLabel(title: L("Kayıt alanı seç"), systemImage: "record.circle")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.red)
+                    .foregroundColor(.red)
                 Text(L("↩ tüm ekran"))
                     .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundColor(.white.opacity(0.5))
             } else {
                 Text(mode.hint)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                 HStack(spacing: 6) {
                     hudModeChip("R", L("Alan"), active: mode == .rect) { switchMode(.rect) }
                     hudModeChip("W", L("Pencere"), active: mode == .window) { switchMode(.window) }
@@ -699,7 +694,7 @@ struct IslandView: View {
             }
             Text(L("Esc iptal"))
                 .font(.system(size: 11))
-                .foregroundStyle(.white.opacity(0.4))
+                .foregroundColor(.white.opacity(0.4))
         }
         .lineLimit(1)
         .fixedSize(horizontal: false, vertical: true)
@@ -726,7 +721,7 @@ struct IslandView: View {
             .background(
                 Capsule().fill(active ? Color.purple.opacity(0.55) : Color.white.opacity(0.07))
             )
-            .foregroundStyle(.white.opacity(active ? 1 : 0.65))
+            .foregroundColor(.white.opacity(active ? 1 : 0.65))
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -747,8 +742,8 @@ struct ClipboardStripView: View {
             HStack(spacing: 6) {
                 Text(L("PANO"))
                     .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                    .tracking(1)
-                    .foregroundStyle(.white.opacity(0.35))
+                    .compatTracking(1)
+                    .foregroundColor(.white.opacity(0.35))
                 Spacer()
                 if !store.entries.isEmpty {
                     Button {
@@ -756,10 +751,10 @@ struct ClipboardStripView: View {
                     } label: {
                         Text(L("Temizle"))
                             .font(.system(size: 9, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.35))
+                            .foregroundColor(.white.opacity(0.35))
                     }
                     .buttonStyle(.plain)
-                    .help(L("Pano geçmişini temizle"))
+                    .compatHelp(L("Pano geçmişini temizle"))
                 }
             }
 
@@ -768,7 +763,7 @@ struct ClipboardStripView: View {
                      ? L("Kopyaladıkların burada birikir")
                      : L("Pano geçmişi kapalı · Ayarlar → Genel'den aç"))
                     .font(.system(size: 10))
-                    .foregroundStyle(.white.opacity(0.28))
+                    .foregroundColor(.white.opacity(0.28))
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 10)
             } else {
@@ -797,9 +792,9 @@ struct ClipboardStripView: View {
                 if copiedID == entry.id {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(Color.black.opacity(0.55))
-                    Image(systemName: "checkmark")
+                    SymbolImage(name: "checkmark")
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.green)
+                        .foregroundColor(.green)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -809,7 +804,7 @@ struct ClipboardStripView: View {
             )
         }
         .buttonStyle(.plain)
-        .help(entry.kind == .text ? L("Metni panoya geri kopyala") : L("Görseli panoya geri kopyala"))
+        .compatHelp(entry.kind == .text ? L("Metni panoya geri kopyala") : L("Görseli panoya geri kopyala"))
     }
 
     @ViewBuilder
@@ -824,21 +819,21 @@ struct ClipboardStripView: View {
                     .frame(width: 52, height: 52)
                     .clipped()
             } else {
-                Image(systemName: "photo")
+                SymbolImage(name: "photo")
                     .font(.system(size: 16))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundColor(.white.opacity(0.4))
                     .frame(width: 52, height: 52)
                     .background(Color.white.opacity(0.06))
             }
         case .text:
             HStack(alignment: .top, spacing: 5) {
-                Image(systemName: "text.quote")
+                SymbolImage(name: "text.quote")
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.35))
+                    .foregroundColor(.white.opacity(0.35))
                     .padding(.top, 2)
                 Text(entry.text ?? "")
                     .font(.system(size: 9))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundColor(.white.opacity(0.8))
                     .lineLimit(3)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -864,16 +859,16 @@ struct IslandToolButton: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 4) {
-                Image(systemName: icon)
+                SymbolImage(name: icon)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(tint == .red ? AnyShapeStyle(Color.red) : AnyShapeStyle(.white))
+                    .foregroundColor(tint == .red ? Color.red : Color.white)
                     .frame(height: 20)
                 Text(title)
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundColor(.white.opacity(0.85))
                 Text(shortcut)
                     .font(.system(size: 8, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.35))
+                    .foregroundColor(.white.opacity(0.35))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
@@ -904,7 +899,7 @@ struct PulsingDot: View {
             .fill(Color.red)
             .frame(width: 10, height: 10)
             .opacity(pulsing ? 0.35 : 1)
-            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: pulsing)
+            .compatAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: pulsing)
             .onAppear { pulsing = true }
     }
 }

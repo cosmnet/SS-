@@ -458,8 +458,7 @@ struct DrawToolbarView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 9)
         .background(
-            Capsule(style: .continuous)
-                .fill(.ultraThinMaterial)
+            MaterialFill(shape: Capsule(style: .continuous))
         )
         .overlay(
             Capsule(style: .continuous)
@@ -482,7 +481,7 @@ struct DrawToolbarView: View {
                     controller.selectColor(index)
                 } label: {
                     Circle()
-                        .fill(Color(nsColor: entry.color))
+                        .fill(Color.from(entry.color))
                         .frame(width: 17, height: 17)
                         .overlay(
                             Circle().strokeBorder(
@@ -494,10 +493,10 @@ struct DrawToolbarView: View {
                         .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
                 }
                 .buttonStyle(.plain)
-                .help(entry.name)
+                .compatHelp(entry.name)
             }
         }
-        .animation(.spring(response: 0.25, dampingFraction: 0.7), value: model.colorIndex)
+        .compatAnimation(.spring(response: 0.25, dampingFraction: 0.7), value: model.colorIndex)
     }
 
     private var widthChips: some View {
@@ -517,10 +516,10 @@ struct DrawToolbarView: View {
                             RoundedRectangle(cornerRadius: 7, style: .continuous)
                                 .strokeBorder(Color.white.opacity(model.widthIndex == index ? 0.3 : 0.1), lineWidth: 0.5)
                         )
-                        .foregroundStyle(.primary)
+                        .foregroundColor(Color.primary)
                 }
                 .buttonStyle(.plain)
-                .help(L("%@ kalınlık", entry.name))
+                .compatHelp(L("%@ kalınlık", entry.name))
             }
         }
     }
@@ -536,7 +535,7 @@ struct DrawToolbarView: View {
         Button {
             controller.selectTool(tool)
         } label: {
-            Image(systemName: icon)
+            SymbolImage(name: icon)
                 .font(.system(size: 13, weight: .semibold))
                 .frame(width: 28, height: 22)
                 .background(
@@ -547,10 +546,10 @@ struct DrawToolbarView: View {
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
                         .strokeBorder(Color.white.opacity(model.tool == tool ? 0.3 : 0.1), lineWidth: 0.5)
                 )
-                .foregroundStyle(.primary)
+                .foregroundColor(Color.primary)
         }
         .buttonStyle(.plain)
-        .help(tooltip)
+        .compatHelp(tooltip)
     }
 
     private func actionChip(
@@ -561,7 +560,7 @@ struct DrawToolbarView: View {
     ) -> some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Image(systemName: icon)
+                SymbolImage(name: icon)
                     .font(.system(size: 10, weight: .bold))
                 Text(title)
                     .font(.system(size: 11, weight: .semibold))
@@ -576,9 +575,9 @@ struct DrawToolbarView: View {
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
                     .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
             )
-            .foregroundStyle(.primary)
+            .foregroundColor(Color.primary)
         }
         .buttonStyle(.plain)
-        .help(tooltip)
+        .compatHelp(tooltip)
     }
 }

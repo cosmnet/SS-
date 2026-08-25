@@ -16,7 +16,7 @@ final class AppState: ObservableObject {
     /// Global kısayol kaydı başarısız olduysa Ayarlar'da gösterilen uyarı.
     @Published var hotkeyWarning: String?
 
-    private var recorder: ScreenRecorder?
+    private var recorder: (any ScreenRecording)?
     private var recordingTimer: Timer?
     private var recordingStart: Date?
 
@@ -138,7 +138,7 @@ final class AppState: ObservableObject {
         let url = settings.saveFolder.appendingPathComponent(OutputPipeline.fileName(prefix: L("SS+ Kayıt"), ext: ext))
         try? FileManager.default.createDirectory(at: settings.saveFolder, withIntermediateDirectories: true)
 
-        let recorder = ScreenRecorder(url: url)
+        let recorder = RecorderFactory.make(url: url)
         recorder.onFailure = { [weak self, weak recorder] error in
             Task { @MainActor in
                 guard let self, let recorder else { return }
@@ -190,14 +190,14 @@ final class AppState: ObservableObject {
     /// Akış kendi kendine durduğunda (ekran uykusu, kilit, monitör çıkarma…)
     /// o ana kadar alınan kareler KAYBEDİLMEZ: dosya kapatılıp teslim edilir,
     /// ardından kesinti nedeni gösterilir.
-    private func handleStreamFailure(_ error: Error, recorder failed: ScreenRecorder) {
-        guard recorder === failed else { return }
+    private func handleStreamFailure(_ error: Error, recorder failed: any ScreenRecording) {
+        guard let current = recorder, current === failed else { return }
         recorder = nil
         finishRecordingUI()
         Task { await finalize(failed, interruptedBy: error) }
     }
 
-    private func finalize(_ recorder: ScreenRecorder, interruptedBy: Error?) async {
+    private func finalize(_ recorder: any ScreenRecording, interruptedBy: Error?) async {
         do {
             let url = try await recorder.stop()
             OutputPipeline.deliverVideo(

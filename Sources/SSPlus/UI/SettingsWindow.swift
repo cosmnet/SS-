@@ -1,5 +1,4 @@
 import AppKit
-import ServiceManagement
 import SwiftUI
 
 // MARK: - Pencere denetleyicisi
@@ -47,7 +46,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
         toolbar.displayMode = .iconOnly
         toolbar.allowsUserCustomization = false
         window.toolbar = toolbar
-        window.toolbarStyle = .unifiedCompact
+        if #available(macOS 11, *) { window.toolbarStyle = .unifiedCompact }
         window.titleVisibility = .hidden
 
         window.makeKeyAndOrderFront(nil)
@@ -144,7 +143,7 @@ private struct SettingsSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label(title, systemImage: icon)
+            CompatLabel(title: title, systemImage: icon)
                 .font(.system(size: 12.5, weight: .semibold))
                 .padding(.leading, 2)
             VStack(alignment: .leading, spacing: 7) {
@@ -166,19 +165,19 @@ private struct ProBadge: View {
             .font(.system(size: 8.5, weight: .heavy, design: .rounded))
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
-            .background(Capsule().fill(.linearGradient(
-                colors: [.pink, .purple],
+            .background(Capsule().fill(LinearGradient(
+                gradient: Gradient(colors: [.pink, .purple]),
                 startPoint: .leading,
                 endPoint: .trailing
             )))
-            .foregroundStyle(.white)
+            .foregroundColor(.white)
     }
 }
 
 private func caption(_ text: String) -> some View {
     Text(text)
         .font(.system(size: 11))
-        .foregroundStyle(.secondary)
+        .foregroundColor(Color.secondary)
         .fixedSize(horizontal: false, vertical: true)
 }
 
@@ -208,19 +207,19 @@ private final class LoginItem: ObservableObject {
     @Published var error: String?
 
     private init() {
-        enabled = SMAppService.mainApp.status == .enabled
+        enabled = LoginItemService.isEnabled
     }
 
-    var available: Bool { Bundle.main.bundleURL.pathExtension == "app" }
+    var available: Bool { LoginItemService.available }
 
     func set(_ on: Bool) {
         do {
-            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+            try LoginItemService.setEnabled(on)
             error = nil
         } catch {
             self.error = error.localizedDescription
         }
-        enabled = SMAppService.mainApp.status == .enabled
+        enabled = LoginItemService.isEnabled
     }
 }
 
@@ -295,7 +294,7 @@ struct GeneralTab: View {
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                     Text(appVersion)
                         .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(Color.secondary)
                 }
                 Spacer()
                 Button(L("Güncellemeleri denetle")) {
@@ -311,7 +310,7 @@ struct GeneralTab: View {
                 Spacer()
                 Button(L("Web sitesi")) { NSWorkspace.shared.open(SiteLinks.home) }
                 Button(L("Kaldır / İzinleri sıfırla…")) { Uninstaller.present() }
-                    .help(L("İzin sorunlarında ya da temiz kurulum için: macOS'taki SS+ izin kayıtlarını (Ekran Kaydı vb.) siler. İstersen ayarları ve Google oturumunu da kaldırıp uygulamayı Çöp'e taşır."))
+                    .compatHelp(L("İzin sorunlarında ya da temiz kurulum için: macOS'taki SS+ izin kayıtlarını (Ekran Kaydı vb.) siler. İstersen ayarları ve Google oturumunu da kaldırıp uygulamayı Çöp'e taşır."))
             }
             .controlSize(.small)
         }
@@ -328,21 +327,21 @@ struct GeneralTab: View {
                 Button(L("Google ile oturum aç")) { signInToGoogle() }
                     .disabled(auth.isSigningIn)
                 if auth.isSigningIn {
-                    ProgressView().controlSize(.small)
+                    CompatSpinner()
                     caption(L("Tarayıcıda Google onayı bekleniyor…"))
                 }
                 Spacer()
             }
             caption(L("Kendi hesabınla oturum açarsın; belirteçler yalnızca bu Mac'te tutulur."))
             if let driveError {
-                Label(driveError, systemImage: "exclamationmark.triangle.fill")
+                CompatLabel(title: driveError, systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 11))
-                    .foregroundStyle(.red)
+                    .foregroundColor(.red)
             }
         } else {
             HStack(spacing: 8) {
-                Image(systemName: "person.crop.circle.fill.badge.checkmark")
-                    .foregroundStyle(.green)
+                SymbolImage(name: "person.crop.circle.fill.badge.checkmark")
+                    .foregroundColor(.green)
                 Text(auth.accountEmail ?? "")
                     .font(.system(size: 12, weight: .medium))
                 Spacer()
@@ -372,21 +371,20 @@ struct GeneralTab: View {
             rowDivider()
             HStack(spacing: 8) {
                 fieldLabel(L("Klasör"))
-                TextField("SS+", text: $settings.driveFolderName)
+                TextField("SS+", text: $settings.driveFolderName, onCommit: { renameDriveFolder() })
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 12))
                     .frame(maxWidth: 200)
-                    .onSubmit { renameDriveFolder() }
                 Button(L("Drive'da aç")) { openDriveFolder() }
                     .controlSize(.small)
                     .disabled(driveBusy)
-                    .help(L("Klasör Drive'ının kökünde oluşturulur; sonra Drive'da istediğin yere taşıyabilir ya da adını değiştirebilirsin — yüklemeler onu izlemeye devam eder."))
+                    .compatHelp(L("Klasör Drive'ının kökünde oluşturulur; sonra Drive'da istediğin yere taşıyabilir ya da adını değiştirebilirsin — yüklemeler onu izlemeye devam eder."))
                 Spacer()
             }
             if let driveError {
-                Label(driveError, systemImage: "exclamationmark.triangle.fill")
+                CompatLabel(title: driveError, systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 11))
-                    .foregroundStyle(.red)
+                    .foregroundColor(.red)
             }
         }
     }
@@ -475,7 +473,7 @@ struct OutputTab: View {
                     .toggleStyle(.checkbox)
                 Toggle(L("Akıllı pencere sezme"), isOn: $settings.smartWindowDetect)
                     .toggleStyle(.checkbox)
-                    .help(L("Alan modunda fare pencere üstündeyken tıklamak o pencereyi yakalar."))
+                    .compatHelp(L("Alan modunda fare pencere üstündeyken tıklamak o pencereyi yakalar."))
                 Spacer()
             }
         }
@@ -558,14 +556,19 @@ private struct FrameRateButton: View {
 
     var body: some View {
         let selected = settings.fps == fps && !locked
-        Button("\(fps) fps") {
+        Button {
             settings.fps = fps
+        } label: {
+            Text("\(fps) fps")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(selected ? .white : Color.primary.opacity(locked ? 0.35 : 0.85))
+                .padding(.horizontal, 9)
+                .frame(height: 20)
+                .background(Capsule().fill(selected ? Color.compatAccent : Color.primary.opacity(0.08)))
         }
-        .controlSize(.small)
-        .buttonStyle(.borderedProminent)
-        .tint(selected ? Color.accentColor : Color.gray.opacity(0.3))
+        .buttonStyle(.plain)
         .disabled(locked)
-        .help(locked ? L("60 fps yalnızca Pro'da") : "")
+        .compatHelp(locked ? L("60 fps yalnızca Pro'da") : "")
     }
 }
 
@@ -590,9 +593,9 @@ struct ShortcutsTab: View {
                 .controlSize(.small)
             }
             if let warning = app.hotkeyWarning {
-                Label(warning, systemImage: "exclamationmark.triangle.fill")
+                CompatLabel(title: warning, systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 11))
-                    .foregroundStyle(.red)
+                    .foregroundColor(.red)
             }
         }
 
@@ -645,15 +648,15 @@ struct ShortcutRecorderButton: View {
         } label: {
             Text(recording ? L("Kısayola bas…") : hotkey.display)
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(recording ? Color.accentColor : Color.primary)
+                .foregroundColor(recording ? Color.compatAccent : Color.primary)
                 .frame(minWidth: 84)
         }
         .controlSize(.small)
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(recording ? Color.accentColor : (invalidFlash ? Color.red : Color.clear), lineWidth: 1.5)
+                .strokeBorder(recording ? Color.compatAccent : (invalidFlash ? Color.red : Color.clear), lineWidth: 1.5)
         )
-        .help(reason ?? (recording ? L("Esc: vazgeç") : L("Değiştirmek için tıkla ve yeni kısayola bas")))
+        .compatHelp(reason ?? (recording ? L("Esc: vazgeç") : L("Değiştirmek için tıkla ve yeni kısayola bas")))
         .onDisappear { stopRecording() }
     }
 
@@ -742,20 +745,24 @@ struct ProTab: View {
     @ObservedObject private var pro = ProManager.shared
     @State private var codeInput: String = ""
     @State private var codeError: Bool = false
-    @FocusState private var codeFieldFocused: Bool
+
+    /// Yazarken hata uyarısını temizler (onChange macOS 11+, bu yüzden binding içinde).
+    private var codeBinding: Binding<String> {
+        Binding(get: { codeInput }, set: { codeInput = $0; codeError = false })
+    }
 
     var body: some View {
         SettingsSection(title: L("Abonelik"), icon: "crown") {
             HStack(spacing: 12) {
-                Image(systemName: pro.isPro ? "star.fill" : "star")
-                    .foregroundStyle(pro.isPro ? .yellow : .secondary)
-                    .font(.title2)
+                SymbolImage(name: pro.isPro ? "star.fill" : "star")
+                    .foregroundColor(pro.isPro ? .yellow : .secondary)
+                    .font(.system(size: 22))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(pro.isPro ? L("SS+ Pro aktif") : "SS+ Pro")
                         .font(.headline)
                     Text(pro.isPro ? L("Tüm özellikler açık") : L("Tüm özelliklerin kilidini aç"))
                         .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(Color.secondary)
                 }
                 Spacer()
                 if pro.isPro {
@@ -774,12 +781,12 @@ struct ProTab: View {
         SettingsSection(title: L("Pro özellikleri"), icon: "sparkles") {
             ForEach(Array(ProManager.features.enumerated()), id: \.offset) { _, feature in
                 HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: feature.icon)
+                    SymbolImage(name: feature.icon)
                         .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(Color.secondary)
                         .frame(width: 16)
                     Text(feature.title).font(.system(size: 12, weight: .semibold))
-                    Text("— " + feature.detail).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("— " + feature.detail).font(.system(size: 12)).foregroundColor(Color.secondary)
                     Spacer()
                 }
             }
@@ -790,8 +797,8 @@ struct ProTab: View {
     private var codeSection: some View {
         if pro.isPro {
             HStack(spacing: 6) {
-                Image(systemName: "checkmark.seal.fill")
-                    .foregroundStyle(.green)
+                SymbolImage(name: "checkmark.seal.fill")
+                    .foregroundColor(.green)
                     .font(.system(size: 11))
                 caption(L("Kod ile etkinleştirildi"))
                 if let code = pro.redeemedCode {
@@ -805,22 +812,19 @@ struct ProTab: View {
         } else {
             HStack(spacing: 8) {
                 fieldLabel(L("Etkinleştirme kodu"))
-                TextField(L("Kodu gir"), text: $codeInput)
+                TextField(L("Kodu gir"), text: codeBinding, onCommit: submitCode)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 12, design: .monospaced))
                     .frame(maxWidth: 180)
-                    .focused($codeFieldFocused)
-                    .onSubmit(submitCode)
-                    .onChange(of: codeInput) { _, _ in codeError = false }
                 Button(L("Etkinleştir"), action: submitCode)
                     .controlSize(.small)
                     .disabled(codeInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 Spacer()
             }
             if codeError {
-                Label(L("Bu kod geçerli değil."), systemImage: "exclamationmark.triangle.fill")
+                CompatLabel(title: L("Bu kod geçerli değil."), systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 11))
-                    .foregroundStyle(.red)
+                    .foregroundColor(.red)
             }
         }
     }
@@ -829,7 +833,6 @@ struct ProTab: View {
         if pro.redeem(codeInput) {
             codeError = false
             codeInput = ""
-            codeFieldFocused = false
         } else {
             codeError = true
         }

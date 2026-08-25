@@ -39,7 +39,7 @@ enum GoogleDriveAPI {
     static func about(accessToken: String) async throws -> DriveUser {
         var request = URLRequest(url: URL(string: "\(base)/about?fields=user(emailAddress,displayName)")!)
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.compatData(for: request)
         try check(response, data)
         struct About: Decodable { let user: DriveUser }
         return try JSONDecoder().decode(About.self, from: data).user
@@ -159,7 +159,7 @@ enum GoogleDriveAPI {
             start.setValue(mimeType, forHTTPHeaderField: "X-Upload-Content-Type")
             start.setValue(String(size), forHTTPHeaderField: "X-Upload-Content-Length")
             start.httpBody = meta
-            let (data, response) = try await URLSession.shared.data(for: start)
+            let (data, response) = try await URLSession.shared.compatData(for: start)
             let http = response as? HTTPURLResponse
             if http?.statusCode == 401, attempt == 0 {
                 token = try await GoogleAuth.shared.validAccessToken(forceRefresh: true)
@@ -179,7 +179,7 @@ enum GoogleDriveAPI {
         put.httpMethod = "PUT"
         put.setValue(mimeType, forHTTPHeaderField: "Content-Type")
         put.setValue(String(size), forHTTPHeaderField: "Content-Length")
-        let (data, response) = try await URLSession.shared.upload(for: put, fromFile: fileURL)
+        let (data, response) = try await URLSession.shared.compatUpload(for: put, fromFile: fileURL)
         try check(response, data)
         return try JSONDecoder().decode(DriveFile.self, from: data)
     }
@@ -213,7 +213,7 @@ enum GoogleDriveAPI {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             if let contentType { request.setValue(contentType, forHTTPHeaderField: "Content-Type") }
             request.httpBody = body
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.shared.compatData(for: request)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             if status == 401, attempt == 0 {
                 token = try await GoogleAuth.shared.validAccessToken(forceRefresh: true)

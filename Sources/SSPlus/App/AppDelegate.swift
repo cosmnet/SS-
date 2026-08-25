@@ -1,6 +1,5 @@
 import AppKit
 import Combine
-import ServiceManagement
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -52,11 +51,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// İlk açılışta girişte başlatma VARSAYILAN olarak açılır (kullanıcı
     /// Ayarlar'dan kapatabilir; bayrak sayesinde bir daha zorlanmaz).
     private func applyLoginItemDefault() {
-        guard Bundle.main.bundleURL.pathExtension == "app" else { return }
+        guard LoginItemService.available else { return }
         let key = "loginItemDefaultApplied"
         guard !UserDefaults.standard.bool(forKey: key) else { return }
         UserDefaults.standard.set(true, forKey: key)
-        try? SMAppService.mainApp.register()
+        try? LoginItemService.setEnabled(true)
     }
 
     /// Kayıt sürerken çıkış (⌘Q, menü, oturum kapatma, izin onarımı sonrası
@@ -82,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            let image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "SS+")
+            let image = NSImage.compatSymbol("camera.viewfinder", description: "SS+")
             image?.isTemplate = true
             button.image = image
             button.toolTip = "SS+"

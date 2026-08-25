@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 // MARK: - Model
 
@@ -219,8 +218,7 @@ struct StatusPanelView: View {
                 .padding(.vertical, 8)
         }
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.regularMaterial)
+            RegularMaterialFill(shape: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
@@ -254,13 +252,13 @@ struct StatusPanelView: View {
             action()
         } label: {
             VStack(spacing: 3) {
-                Image(systemName: icon)
+                SymbolImage(name: icon)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(tint)
+                    .foregroundColor(tint)
                     .frame(height: 16)
                 Text(title)
                     .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(Color.secondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 7)
@@ -268,7 +266,7 @@ struct StatusPanelView: View {
             .contentShape(RoundedRectangle(cornerRadius: 9))
         }
         .buttonStyle(.plain)
-        .help(shortcut.map { "\(title) — \($0)" } ?? title)
+        .compatHelp(shortcut.map { "\(title) — \($0)" } ?? title)
     }
 
     // MARK: Sekmeler
@@ -282,12 +280,12 @@ struct StatusPanelView: View {
                 } label: {
                     Text(tab.title)
                         .font(.system(size: 10.5, weight: .semibold))
-                        .foregroundStyle(model.tab == tab ? .white : .secondary)
+                        .foregroundColor(model.tab == tab ? .white : .secondary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4.5)
                         .frame(maxWidth: .infinity)
                         .background(
-                            Capsule().fill(model.tab == tab ? Color.accentColor.opacity(0.85) : Color.clear)
+                            Capsule().fill(model.tab == tab ? Color.compatAccent.opacity(0.85) : Color.clear)
                         )
                         .contentShape(Capsule())
                 }
@@ -318,7 +316,7 @@ struct StatusPanelView: View {
                 emptyState(icon: "tray", text: L("Henüz kayıt yok"))
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 2) {
+                    VStack(spacing: 2) {
                         ForEach(model.files, id: \.self) { url in
                             fileRow(url)
                         }
@@ -340,20 +338,20 @@ struct StatusPanelView: View {
                     .truncationMode(.middle)
                 Text(relativeDate(of: url))
                     .font(.system(size: 9.5))
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(Color.secondary)
             }
             Spacer(minLength: 4)
             Button {
                 NSWorkspace.shared.activateFileViewerSelecting([url])
             } label: {
-                Image(systemName: "folder")
+                SymbolImage(name: "folder")
                     .font(.system(size: 10.5))
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(Color.secondary)
                     .frame(width: 20, height: 20)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .help(L("Finder'da göster"))
+            .compatHelp(L("Finder'da göster"))
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
@@ -371,7 +369,7 @@ struct StatusPanelView: View {
                 emptyState(icon: "photo.on.rectangle.angled", text: settings.clipboardHistoryEnabled ? L("Pano görsel geçmişi boş") : L("Pano geçmişi kapalı · Ayarlar → Genel"))
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 2) {
+                    VStack(spacing: 2) {
                         ForEach(images) { entry in
                             clipboardImageRow(entry)
                         }
@@ -395,9 +393,9 @@ struct StatusPanelView: View {
                         .clipped()
                         .cornerRadius(5)
                 } else {
-                    Image(systemName: "photo")
+                    SymbolImage(name: "photo")
                         .font(.system(size: 13))
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(Color.secondary)
                         .frame(width: 44, height: 30)
                 }
             }
@@ -406,13 +404,13 @@ struct StatusPanelView: View {
                     .font(.system(size: 11.5, weight: .medium))
                 Text(RelativeDateTimeFormatter.localized.tr.string(for: entry.date) ?? "")
                     .font(.system(size: 9.5))
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(Color.secondary)
             }
             Spacer(minLength: 4)
             if model.copiedID == entry.id {
-                Image(systemName: "checkmark.circle.fill")
+                SymbolImage(name: "checkmark.circle.fill")
                     .font(.system(size: 13))
-                    .foregroundStyle(.green)
+                    .foregroundColor(.green)
                     .transition(.opacity)
             }
         }
@@ -423,7 +421,7 @@ struct StatusPanelView: View {
             clipboard.recopy(entry)
             model.confirmCopy(entry.id)
         }
-        .help(L("Panoya geri kopyala"))
+        .compatHelp(L("Panoya geri kopyala"))
     }
 
     private var clipboardTextsList: some View {
@@ -433,7 +431,7 @@ struct StatusPanelView: View {
                 emptyState(icon: "text.quote", text: settings.clipboardHistoryEnabled ? L("Pano metin geçmişi boş") : L("Pano geçmişi kapalı · Ayarlar → Genel"))
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 2) {
+                    VStack(spacing: 2) {
                         ForEach(texts) { entry in
                             clipboardTextRow(entry)
                         }
@@ -447,9 +445,9 @@ struct StatusPanelView: View {
 
     private func clipboardTextRow(_ entry: ClipboardEntry) -> some View {
         HStack(spacing: 9) {
-            Image(systemName: "text.alignleft")
+            SymbolImage(name: "text.alignleft")
                 .font(.system(size: 12))
-                .foregroundStyle(.secondary)
+                .foregroundColor(Color.secondary)
                 .frame(width: 16)
             VStack(alignment: .leading, spacing: 1.5) {
                 Text(entry.text ?? "")
@@ -459,12 +457,12 @@ struct StatusPanelView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(RelativeDateTimeFormatter.localized.tr.string(for: entry.date) ?? "")
                     .font(.system(size: 9.5))
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(Color.secondary)
             }
             if model.copiedID == entry.id {
-                Image(systemName: "checkmark.circle.fill")
+                SymbolImage(name: "checkmark.circle.fill")
                     .font(.system(size: 13))
-                    .foregroundStyle(.green)
+                    .foregroundColor(.green)
                     .transition(.opacity)
             }
         }
@@ -475,17 +473,17 @@ struct StatusPanelView: View {
             clipboard.recopy(entry)
             model.confirmCopy(entry.id)
         }
-        .help(L("Panoya geri kopyala"))
+        .compatHelp(L("Panoya geri kopyala"))
     }
 
     private func emptyState(icon: String, text: String) -> some View {
         VStack(spacing: 8) {
-            Image(systemName: icon)
+            SymbolImage(name: icon)
                 .font(.system(size: 20))
-                .foregroundStyle(.quaternary)
+                .foregroundColor(Color.secondary.opacity(0.4))
             Text(text)
                 .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
+                .foregroundColor(Color.secondary.opacity(0.7))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -512,9 +510,9 @@ struct StatusPanelView: View {
             controller?.close()
             action()
         } label: {
-            Label(label, systemImage: icon)
+            CompatLabel(title: label, systemImage: icon)
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.secondary)
+                .foregroundColor(Color.secondary)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 4)
                 .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.05)))
@@ -550,9 +548,9 @@ struct FileThumbnailView: View {
                     .clipped()
                     .cornerRadius(5)
             } else {
-                Image(systemName: url.pathExtension.lowercased() == "mov" ? "film" : "photo")
+                SymbolImage(name: url.pathExtension.lowercased() == "mov" ? "film" : "photo")
                     .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(Color.secondary)
                     .frame(width: 44, height: 30)
                     .background(Color.white.opacity(0.05))
                     .cornerRadius(5)

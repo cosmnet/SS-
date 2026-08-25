@@ -40,8 +40,10 @@ struct NotchMetrics: Equatable {
         let frame = screen.frame
 
         // Menü çubuğu şeridi. `visibleFrame` menü çubuğunun altında 1 puntoluk
-        // pay bırakır; çentikli Mac'lerde asıl doğru kaynak safeAreaInsets.top.
-        let safeTop = screen.safeAreaInsets.top
+        // pay bırakır; çentikli Mac'lerde asıl doğru kaynak safeAreaInsets.top
+        // (macOS 12+; daha eski sürümlerde çentikli Mac yoktur).
+        let safeTop: CGFloat
+        if #available(macOS 12, *) { safeTop = screen.safeAreaInsets.top } else { safeTop = 0 }
         let strip = frame.maxY - screen.visibleFrame.maxY
         let menuBarHeight: CGFloat
         if safeTop > 0 {
@@ -52,7 +54,7 @@ struct NotchMetrics: Equatable {
 
         // Çentik yalnızca güvenli alan payı VE iki yardımcı alan birden
         // bildirildiğinde vardır.
-        guard safeTop > 0,
+        guard #available(macOS 12, *), safeTop > 0,
               let rawLeft = screen.auxiliaryTopLeftArea,
               let rawRight = screen.auxiliaryTopRightArea
         else {
@@ -96,9 +98,10 @@ struct NotchMetrics: Equatable {
     /// Harici monitör birincil yapıldığında `NSScreen.screens.first` dahili ekran
     /// olmayabilir; çentik uygulaması daima çentiğin bulunduğu ekrana oturmalıdır.
     static func hostScreen() -> NSScreen? {
-        NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
-            ?? NSScreen.main
-            ?? NSScreen.screens.first
+        if #available(macOS 12, *), let notched = NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }) {
+            return notched
+        }
+        return NSScreen.main ?? NSScreen.screens.first
     }
 
     /// Island'ın yerleştiği ekranın ölçüleri.

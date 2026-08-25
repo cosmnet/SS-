@@ -384,7 +384,7 @@ struct PreviewCardView: View {
                 VStack {
                     Text(status)
                         .font(.system(size: 10.5, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundColor(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
                         .background(Capsule().fill(Color.black.opacity(0.72)))
@@ -442,7 +442,7 @@ struct PreviewCardView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .background(
-            Capsule().fill(.ultraThinMaterial)
+            MaterialFill(shape: Capsule())
                 .overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5))
                 .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
         )
@@ -450,27 +450,27 @@ struct PreviewCardView: View {
 
     private var proChip: some View {
         HStack(spacing: 3) {
-            Image(systemName: "text.viewfinder")
+            SymbolImage(name: "text.viewfinder")
             Text("PRO")
                 .font(.system(size: 8, weight: .heavy, design: .rounded))
         }
         .font(.system(size: 11))
-        .foregroundStyle(.white.opacity(0.3))
+        .foregroundColor(.white.opacity(0.3))
         .padding(.horizontal, 7)
         .padding(.vertical, 5)
-        .help(L("OCR yalnızca Pro'da — Ayarlar'dan aç"))
+        .compatHelp(L("OCR yalnızca Pro'da — Ayarlar'dan aç"))
     }
 
     private func chip(icon: String, label: String, tint: Color = .white, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: icon)
+            SymbolImage(name: icon)
                 .font(.system(size: 11.5, weight: .semibold))
-                .foregroundStyle(tint.opacity(0.9))
+                .foregroundColor(tint.opacity(0.9))
                 .frame(width: 26, height: 26)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(label)
+        .compatHelp(label)
     }
 
     // MARK: Video kartı
@@ -480,9 +480,9 @@ struct PreviewCardView: View {
             Button {
                 controller?.openCurrent()
             } label: {
-                Image(systemName: "film.fill")
+                SymbolImage(name: "film.fill")
                     .font(.system(size: 20))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                     .frame(width: 40, height: 40)
                     .background(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -490,17 +490,17 @@ struct PreviewCardView: View {
                     )
             }
             .buttonStyle(.plain)
-            .help(L("Videoyu aç"))
+            .compatHelp(L("Videoyu aç"))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(url.lastPathComponent)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Text(model.status ?? uploadStatusText ?? L("Video kaydedildi"))
                     .font(.system(size: 10.5))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundColor(.white.opacity(0.55))
             }
 
             Spacer(minLength: 4)
@@ -518,8 +518,7 @@ struct PreviewCardView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial)
+            MaterialFill(shape: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5)

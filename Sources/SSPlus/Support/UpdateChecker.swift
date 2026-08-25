@@ -39,7 +39,7 @@ enum UpdateChecker {
             var request = URLRequest(url: SiteLinks.versionJSON)
             request.timeoutInterval = 10
             request.cachePolicy = .reloadIgnoringLocalCacheData
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.shared.compatData(for: request)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard (200..<300).contains(status) else { throw URLError(.badServerResponse) }
             let info = try JSONDecoder().decode(Info.self, from: data)
