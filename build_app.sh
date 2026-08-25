@@ -105,6 +105,12 @@ SIGN_ID="$(print -r -- "$IDENTITIES" | sed -n 's/.*"\(Developer ID Application:[
 if [[ -z "$SIGN_ID" ]]; then
   SIGN_ID="$(print -r -- "$IDENTITIES" | sed -n 's/.*"\(Apple Development:[^"]*\)".*/\1/p' | head -1)"
 fi
+# Xcode/Apple hesabı olmayan makineler için yerel, kendinden imzalı kimlik
+# (Anahtar Zinciri'nde "SS+ Local Signing"). Kararlıdır: yeniden derlemeler
+# arasında Ekran Kaydı izni korunur. Gatekeeper açısından ad-hoc ile aynıdır.
+if [[ -z "$SIGN_ID" ]] && print -r -- "$IDENTITIES" | grep -q '"SS+ Local Signing"'; then
+  SIGN_ID="SS+ Local Signing"
+fi
 
 if [[ -n "$SIGN_ID" ]]; then
   echo "  Kararlı kimlik bulundu: ${SIGN_ID}"
