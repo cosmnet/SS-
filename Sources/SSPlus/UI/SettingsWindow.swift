@@ -4,19 +4,29 @@ import SwiftUI
 
 // MARK: - Pencere denetleyicisi
 
+/// Seçili sekme: başlık çubuğundaki segment denetimi ile SwiftUI içeriği paylaşır.
 @MainActor
-final class SettingsWindowController {
+final class SettingsTabModel: ObservableObject {
+    static let shared = SettingsTabModel()
+    @Published var tab: SettingsView.Tab = .general
+}
+
+@MainActor
+final class SettingsWindowController: NSObject, NSToolbarDelegate {
     static let shared = SettingsWindowController()
 
     private var window: NSWindow?
+    private var segmented: NSSegmentedControl?
+    private static let tabsItem = NSToolbarItem.Identifier("ssplus.tabs")
 
-    private init() {}
+    private override init() { super.init() }
 
     func show() {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
 
         if let window {
+            segmented?.selectedSegment = SettingsView.Tab.allCases.firstIndex(of: SettingsTabModel.shared.tab) ?? 0
             window.makeKeyAndOrderFront(nil)
             return
         }
@@ -25,13 +35,56 @@ final class SettingsWindowController {
         let window = NSWindow(contentViewController: hosting)
         window.title = L("SS+ Ayarları")
         window.styleMask = [.titled, .closable, .miniaturizable]
-        window.setContentSize(NSSize(width: 620, height: 560))
+        window.setContentSize(NSSize(width: 640, height: 600))
         window.center()
         window.isReleasedWhenClosed = false
         window.sharingType = .none   // kayıt sırasında açılırsa videoya girmesin
         window.delegate = WindowKeeper.shared
+
+        // Sekmeler başlık çubuğunda (Sistem Ayarları / MeetingBar tarzı)
+        let toolbar = NSToolbar(identifier: "ssplus.settings")
+        toolbar.delegate = self
+        toolbar.displayMode = .iconOnly
+        toolbar.allowsUserCustomization = false
+        window.toolbar = toolbar
+        window.toolbarStyle = .unifiedCompact
+        window.titleVisibility = .hidden
+
         window.makeKeyAndOrderFront(nil)
         self.window = window
+    }
+
+    // MARK: NSToolbarDelegate
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [.flexibleSpace, Self.tabsItem, .flexibleSpace]
+    }
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        toolbarDefaultItemIdentifiers(toolbar)
+    }
+
+    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        guard itemIdentifier == Self.tabsItem else { return nil }
+        let control = NSSegmentedControl(
+            labels: SettingsView.Tab.allCases.map { L($0.rawValue) },
+            trackingMode: .selectOne,
+            target: self,
+            action: #selector(tabChanged(_:))
+        )
+        control.segmentStyle = .automatic
+        control.selectedSegment = SettingsView.Tab.allCases.firstIndex(of: SettingsTabModel.shared.tab) ?? 0
+        for i in 0..<control.segmentCount { control.setWidth(96, forSegment: i) }
+        segmented = control
+        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+        item.view = control
+        return item
+    }
+
+    @objc private func tabChanged(_ sender: NSSegmentedControl) {
+        let tabs = SettingsView.Tab.allCases
+        guard tabs.indices.contains(sender.selectedSegment) else { return }
+        SettingsTabModel.shared.tab = tabs[sender.selectedSegment]
     }
 }
 
@@ -58,40 +111,25 @@ struct SettingsView: View {
         var id: String { rawValue }
     }
 
-    @State private var selectedTab: Tab
+    @ObservedObject private var tabs = SettingsTabModel.shared
 
     init(tab: Tab = .general) {
-        _selectedTab = State(initialValue: tab)
+        SettingsTabModel.shared.tab = tab
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Üstte yerel sekmeler
-            Picker("", selection: $selectedTab) {
-                ForEach(Tab.allCases) { tab in
-                    Text(L(tab.rawValue)).tag(tab)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                switch tabs.tab {
+                case .general: GeneralTab()
+                case .output: OutputTab()
+                case .shortcuts: ShortcutsTab()
+                case .pro: ProTab()
                 }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(maxWidth: 440)
-            .padding(.top, 10)
-            .padding(.bottom, 8)
-
-            Divider()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    switch selectedTab {
-                    case .general: GeneralTab()
-                    case .output: OutputTab()
-                    case .shortcuts: ShortcutsTab()
-                    case .pro: ProTab()
-                    }
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
@@ -109,11 +147,11 @@ private struct SettingsSection<Content: View>: View {
             Label(title, systemImage: icon)
                 .font(.system(size: 12.5, weight: .semibold))
                 .padding(.leading, 2)
-            VStack(alignment: .leading, spacing: 9) {
+            VStack(alignment: .leading, spacing: 7) {
                 content
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.vertical, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.primary.opacity(0.045)))
             .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
@@ -254,33 +292,24 @@ struct GeneralTab: View {
                     .controlSize(.small)
                     .disabled(!settings.clipboardHistoryEnabled)
             }
-            caption(L("Açıkken kopyaladığın son 10 metin ve görsel adada ve menü panelinde listelenir. Bunlar diske yazılır: ~/Library/Application Support/SSPlus/Clipboard. Şifre yöneticilerinin gizli işaretlediği içerik hiçbir zaman kaydedilmez."))
+            caption(L("Son 10 kopya diske yazılır (~/Library/Application Support/SSPlus/Clipboard); gizli işaretli içerik kaydedilmez."))
         }
 
         SettingsSection(title: L("Hakkında"), icon: "person.crop.circle") {
-            HStack(alignment: .center, spacing: 22) {
-                VStack(spacing: 6) {
-                    SSPlusLogoView(size: 72)
+            HStack(alignment: .center, spacing: 14) {
+                SSPlusLogoView(size: 40)
+                VStack(alignment: .leading, spacing: 1) {
                     Text("SS+")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
                     Text(appVersion)
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
-                .frame(width: 120)
-                VStack(alignment: .leading, spacing: 10) {
-                    caption(L("macOS için hafif ekran yakalama: ada arayüzü, yerinde düzenleme, video kaydı ve isteğe bağlı Google Drive paylaşımı."))
-                    HStack(spacing: 8) {
-                        Button(L("Kaynak kodu (GitHub)")) {
-                            NSWorkspace.shared.open(URL(string: "https://github.com/cosmnet/SS-")!)
-                        }
-                        Button(L("Kaldır / İzinleri sıfırla…")) { Uninstaller.present() }
-                    }
+                Spacer()
+                Button(L("Kaldır / İzinleri sıfırla…")) { Uninstaller.present() }
                     .controlSize(.small)
-                    caption(L("İzin sorunlarında ya da temiz kurulum için: macOS'taki SS+ izin kayıtlarını (Ekran Kaydı vb.) siler. İstersen ayarları ve Google oturumunu da kaldırıp uygulamayı Çöp'e taşır."))
-                }
+                    .help(L("İzin sorunlarında ya da temiz kurulum için: macOS'taki SS+ izin kayıtlarını (Ekran Kaydı vb.) siler. İstersen ayarları ve Google oturumunu da kaldırıp uygulamayı Çöp'e taşır."))
             }
-            .padding(.vertical, 4)
         }
     }
 }
@@ -335,9 +364,9 @@ struct OutputTab: View {
                     .toggleStyle(.checkbox)
                 Toggle(L("Akıllı pencere sezme"), isOn: $settings.smartWindowDetect)
                     .toggleStyle(.checkbox)
+                    .help(L("Alan modunda fare pencere üstündeyken tıklamak o pencereyi yakalar."))
                 Spacer()
             }
-            caption(L("Alan modunda fare pencere üstündeyken tıklamak o pencereyi yakalar."))
         }
 
         SettingsSection(title: L("Video"), icon: "record.circle") {
@@ -409,7 +438,7 @@ struct OutputTab: View {
                 }
                 Spacer()
             }
-            caption(L("Kendi Google hesabınla oturum açarsın; belirteçler yalnızca bu Mac'in Anahtar Zinciri'nde tutulur, SS+ geliştiricisinin Drive'ına erişimi olmaz."))
+            caption(L("Kendi hesabınla oturum açarsın; belirteçler yalnızca bu Mac'te tutulur."))
             if let driveError {
                 Label(driveError, systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 11))
@@ -453,9 +482,9 @@ struct OutputTab: View {
                 Button(L("Drive'da aç")) { openDriveFolder() }
                     .controlSize(.small)
                     .disabled(driveBusy)
+                    .help(L("Klasör Drive'ının kökünde oluşturulur; sonra Drive'da istediğin yere taşıyabilir ya da adını değiştirebilirsin — yüklemeler onu izlemeye devam eder."))
                 Spacer()
             }
-            caption(L("Klasör Drive'ının kökünde oluşturulur; sonra Drive'da istediğin yere taşıyabilir ya da adını değiştirebilirsin — yüklemeler onu izlemeye devam eder."))
             if let driveError {
                 Label(driveError, systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 11))

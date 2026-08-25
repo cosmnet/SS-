@@ -223,6 +223,9 @@ enum Localization {
         "macOS için hafif ekran yakalama: ada arayüzü, yerinde düzenleme, video kaydı ve isteğe bağlı Google Drive paylaşımı.":
             "Lightweight screen capture for macOS: island UI, in-place editing, video recording and optional Google Drive sharing.",
         "Format": "Format",
+        "Son 10 kopya diske yazılır (~/Library/Application Support/SSPlus/Clipboard); gizli işaretli içerik kaydedilmez.":
+            "The last 10 copies are written to disk (~/Library/Application Support/SSPlus/Clipboard); concealed content is never stored.",
+        "Kendi hesabınla oturum açarsın; belirteçler yalnızca bu Mac'te tutulur.": "You sign in with your own account; tokens stay on this Mac only.",
         "İmleci dahil et": "Include cursor",
         "Pro özellikleri": "Pro features",
 
