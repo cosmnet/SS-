@@ -13,8 +13,8 @@ VOL_NAME="SS+ ${VERSION}"
 DMG="dist/SSPlus-${VERSION}.dmg"
 STAGE="dist/.dmg-stage"
 
-# 1) Universal release derlemesi + imza
-./build_app.sh
+# 1) Universal release derlemesi + imza (sürüm Info.plist'e de yazılır)
+VERSION="$VERSION" ./build_app.sh
 
 # 2) DMG içeriği
 rm -rf "$STAGE" "$DMG"
@@ -51,7 +51,11 @@ SS+ — Kurulum
 5) PRO'YU AÇMA
    Ayarlar → Pro → "Etkinleştirme kodu" alanına sana verilen kodu yaz ve
    "Etkinleştir"e bas. Pro özellikleri (OCR ile metin kopyalama, 60 FPS video,
-   sistem sesi, HEVC) anında açılır.
+   sistem sesi, HEVC ve özel bit hızı) anında açılır.
+
+6) KISAYOLLAR
+   ⌃⌘–  yakalama aracı  ·  ⌃⇧⌘–  video kaydı başlat / durdur
+   (Ayarlar → Kısayollar'dan değiştirilebilir.)
 TXT
 
 # 3) DMG oluştur

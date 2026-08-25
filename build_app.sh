@@ -7,11 +7,25 @@ APP_NAME="SS+"
 BUNDLE="dist/${APP_NAME}.app"
 ICON_SRC="Resources/SSPlus.icns"
 
+# Sürüm: make_release.sh VERSION ortam değişkeniyle geçirir; elle çalıştırmada
+# 1.0.0. Derleme numarası git commit sayısından türer, böylece her sürüm
+# Info.plist'te de artar (eskiden hep "1.0 (1)" kalıyordu).
+VERSION="${VERSION:-1.0.0}"
+BUILD="${BUILD:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
+
 # Universal (Apple Silicon + Intel) derleme: uygulama internetten indirilip
 # her Mac'te çalışacağı için iki mimariyi de içeren tek ikili üretiyoruz.
-ARCH_FLAGS=(--arch arm64 --arch x86_64)
-
-echo "▶︎ Release derleniyor (universal: arm64 + x86_64)…"
+# Çoklu mimari SwiftPM'de tam Xcode'un xcbuild'ini ister; yalnızca Command
+# Line Tools kuruluysa (xcode-select bir Xcode.app göstermiyorsa) yerel
+# mimariye düşülür — yerel test için yeterli, dağıtım için Xcode seçilmeli.
+if [[ "$(xcode-select -p 2>/dev/null)" == *"Xcode.app"* ]]; then
+  ARCH_FLAGS=(--arch arm64 --arch x86_64)
+  echo "▶︎ Release derleniyor (universal: arm64 + x86_64)…"
+else
+  ARCH_FLAGS=()
+  echo "▶︎ Release derleniyor (yalnızca $(uname -m); universal için Xcode gerekir:"
+  echo "   sudo xcode-select -s /Applications/Xcode.app)…"
+fi
 swift build -c release "${ARCH_FLAGS[@]}"
 
 BIN="$(swift build -c release "${ARCH_FLAGS[@]}" --show-bin-path)/SSPlus"
@@ -34,7 +48,8 @@ cp "$BIN" "${BUNDLE}/Contents/MacOS/SSPlus"
 chmod +x "${BUNDLE}/Contents/MacOS/SSPlus"
 cp "$ICON_SRC" "${BUNDLE}/Contents/Resources/SSPlus.icns"
 
-cat > "${BUNDLE}/Contents/Info.plist" <<'PLIST'
+echo "  Sürüm ${VERSION} (${BUILD})"
+cat > "${BUNDLE}/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -52,11 +67,15 @@ cat > "${BUNDLE}/Contents/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>${VERSION}</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>${BUILD}</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>tr</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.utilities</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>LSUIElement</key>

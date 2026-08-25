@@ -739,6 +739,7 @@ struct IslandView: View {
 /// Tıklanan öğe panoya geri yazılır; kısa bir onay işareti belirir.
 struct ClipboardStripView: View {
     @ObservedObject private var store = ClipboardStore.shared
+    @ObservedObject private var settings = SettingsStore.shared
     @State private var copiedID: UUID?
 
     var body: some View {
@@ -763,7 +764,9 @@ struct ClipboardStripView: View {
             }
 
             if store.entries.isEmpty {
-                Text("Kopyaladıkların burada birikir")
+                Text(settings.clipboardHistoryEnabled
+                     ? "Kopyaladıkların burada birikir"
+                     : "Pano geçmişi kapalı · Ayarlar → Genel'den aç")
                     .font(.system(size: 10))
                     .foregroundStyle(.white.opacity(0.28))
                     .frame(maxWidth: .infinity, alignment: .center)

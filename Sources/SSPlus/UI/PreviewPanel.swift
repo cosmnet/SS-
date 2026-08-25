@@ -42,9 +42,11 @@ final class PreviewPanelController {
 
     // MARK: - Göster
 
-    func show(_ item: PreviewItem) {
+    /// - note: Karttaki durum satırı (örn. "Kayıt kesildi…"); nil ise varsayılan metin.
+    func show(_ item: PreviewItem, note: String? = nil) {
         close()
         model.item = item
+        model.status = note
 
         let size = contentSize(for: item)
         let margin: CGFloat = 16

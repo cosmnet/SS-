@@ -8,6 +8,9 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
     var onFailure: ((Error) -> Void)?
 
     private var stream: SCStream?
+    /// Aşağıdaki dört alan YALNIZCA `sampleQueue` üzerinden okunur/yazılır.
+    /// `stop()` de onlara ancak `sampleQueue.sync` içinden dokunur; böylece
+    /// geç gelen bir kare, kapatılmış bir girişe eklenmeye çalışmaz.
     private var writer: AVAssetWriter?
     private var videoInput: AVAssetWriterInput?
     private var audioInput: AVAssetWriterInput?
@@ -34,11 +37,12 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
         pixelWidth -= pixelWidth % 2
         pixelHeight -= pixelHeight % 2
 
+        let safeFPS = max(1, min(fps, 120))
         let config = SCStreamConfiguration()
         config.sourceRect = CaptureEngine.localTopLeftRect(globalRect, on: screen)
         config.width = pixelWidth
         config.height = pixelHeight
-        config.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(fps))
+        config.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(safeFPS))
         config.pixelFormat = kCVPixelFormatType_32BGRA
         config.showsCursor = showCursor
         config.queueDepth = 6
@@ -48,21 +52,15 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
         let settings = SettingsStore.shared
         let isPro = ProManager.shared.isPro
 
-        let wantsMP4 = settings.videoFormat.lowercased() == "mp4"
-        let fileType: AVFileType = wantsMP4 ? .mp4 : .mov
-        let wantedExtension = wantsMP4 ? "mp4" : "mov"
-        if url.pathExtension.lowercased() != wantedExtension {
-            let corrected = url.deletingPathExtension().appendingPathExtension(wantedExtension)
-            try? FileManager.default.removeItem(at: corrected)
-            url = corrected
-        }
+        let fileType: AVFileType = settings.videoFormat.lowercased() == "mp4" ? .mp4 : .mov
 
         // HEVC yalnızca Pro'da; değilse H.264'e düş
         let codec: AVVideoCodecType =
             (settings.videoCodec.lowercased() == "hevc" && isPro) ? .hevc : .h264
 
-        // Bit hızı: 0 = otomatik formül, diğerleri yalnızca Pro'da geçerli
-        let autoBitrate = max(2_000_000, pixelWidth * pixelHeight * 6)
+        // Bit hızı: 0 = otomatik formül, diğerleri yalnızca Pro'da geçerli.
+        // Ekran içeriği çok iyi sıkışır; kare hızıyla ölçekle ve üstten sınırla.
+        let autoBitrate = min(40_000_000, max(2_000_000, Int(Double(pixelWidth * pixelHeight * safeFPS) * 0.07)))
         let chosenMbps = settings.videoBitrateMbps
         let bitrate = (chosenMbps > 0 && isPro) ? chosenMbps * 1_000_000 : autoBitrate
 
@@ -73,13 +71,14 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
             AVVideoHeightKey: pixelHeight,
             AVVideoCompressionPropertiesKey: [
                 AVVideoAverageBitRateKey: bitrate,
-                AVVideoExpectedSourceFrameRateKey: fps,
+                AVVideoExpectedSourceFrameRateKey: safeFPS,
             ],
         ]
         let videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
         videoInput.expectsMediaDataInRealTime = true
         writer.add(videoInput)
 
+        var audioInput: AVAssetWriterInput?
         if captureAudio {
             let audioSettings: [String: Any] = [
                 AVFormatIDKey: kAudioFormatMPEG4AAC,
@@ -87,24 +86,37 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
                 AVNumberOfChannelsKey: 2,
                 AVEncoderBitRateKey: 192_000,
             ]
-            let audioInput = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
-            audioInput.expectsMediaDataInRealTime = true
-            writer.add(audioInput)
-            self.audioInput = audioInput
+            let input = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
+            input.expectsMediaDataInRealTime = true
+            writer.add(input)
+            audioInput = input
         }
 
         guard writer.startWriting() else {
             throw writer.error ?? CaptureError.encodeFailed
         }
-        self.writer = writer
-        self.videoInput = videoInput
 
+        // Yazıcı açıldıktan sonra akış kurulamazsa diske boş bir dosya
+        // bırakma: yazımı iptal et, dosyayı sil, hatayı yukarı ilet.
         let stream = SCStream(filter: filter, configuration: config, delegate: self)
-        try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: sampleQueue)
-        if captureAudio {
-            try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: sampleQueue)
+        do {
+            try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: sampleQueue)
+            if captureAudio {
+                try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: sampleQueue)
+            }
+            try await stream.startCapture()
+        } catch {
+            writer.cancelWriting()
+            try? FileManager.default.removeItem(at: url)
+            throw error
         }
-        try await stream.startCapture()
+
+        sampleQueue.sync {
+            self.writer = writer
+            self.videoInput = videoInput
+            self.audioInput = audioInput
+            self.sessionStarted = false
+        }
         self.stream = stream
 
         // Kayıt sırasında ekrana çizim katmanını hazırla (singleton'a dokunmak
@@ -114,15 +126,45 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
         RecordingDrawController.shared.arm()
     }
 
-    func stop() async -> URL {
+    /// Akışı durdurur ve dosyayı kapatır.
+    ///
+    /// - Hiç kare gelmediyse dosya silinir ve `CaptureError.noFrames` fırlatılır.
+    /// - Yazıcı hata verdiyse dosya silinir ve yazıcının hatası fırlatılır.
+    /// Böylece çağıran taraf asla oynatılamayan bir dosyayı "kaydedildi" diye sunmaz.
+    func stop() async throws -> URL {
         if let stream {
             try? await stream.stopCapture()
         }
         stream = nil
-        videoInput?.markAsFinished()
-        audioInput?.markAsFinished()
-        if let writer, writer.status == .writing {
+
+        // Örnek kuyruğuyla senkron: bundan sonra hiçbir kare eklenemez.
+        let (writer, started): (AVAssetWriter?, Bool) = sampleQueue.sync {
+            let w = self.writer
+            let s = self.sessionStarted
+            if s {
+                self.videoInput?.markAsFinished()
+                self.audioInput?.markAsFinished()
+            }
+            self.writer = nil
+            self.videoInput = nil
+            self.audioInput = nil
+            return (w, s)
+        }
+
+        guard let writer else { return url }
+
+        guard started else {
+            writer.cancelWriting()
+            try? FileManager.default.removeItem(at: url)
+            throw CaptureError.noFrames
+        }
+
+        if writer.status == .writing {
             await writer.finishWriting()
+        }
+        if writer.status == .failed {
+            try? FileManager.default.removeItem(at: url)
+            throw writer.error ?? CaptureError.encodeFailed
         }
         return url
     }
@@ -130,7 +172,7 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
     // MARK: - SCStreamOutput
 
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
-        guard sampleBuffer.isValid else { return }
+        guard sampleBuffer.isValid, let writer, writer.status == .writing else { return }
         switch type {
         case .screen:
             guard let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, createIfNecessary: false) as? [[SCStreamFrameInfo: Any]],
@@ -138,15 +180,15 @@ final class ScreenRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
                   let status = SCFrameStatus(rawValue: statusRaw),
                   status == .complete else { return }
             if !sessionStarted {
-                writer?.startSession(atSourceTime: CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
+                writer.startSession(atSourceTime: CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
                 sessionStarted = true
             }
-            if videoInput?.isReadyForMoreMediaData == true {
-                videoInput?.append(sampleBuffer)
+            if let videoInput, videoInput.isReadyForMoreMediaData {
+                videoInput.append(sampleBuffer)
             }
         case .audio:
-            guard sessionStarted, audioInput?.isReadyForMoreMediaData == true else { return }
-            audioInput?.append(sampleBuffer)
+            guard sessionStarted, let audioInput, audioInput.isReadyForMoreMediaData else { return }
+            audioInput.append(sampleBuffer)
         default:
             break
         }

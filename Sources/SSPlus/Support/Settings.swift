@@ -12,8 +12,10 @@ struct HotkeySetting: Equatable {
     /// Carbon değiştirici maskesi (`cmdKey`, `shiftKey`, `optionKey`, `controlKey`).
     var carbonModifiers: UInt32
 
-    static let defaultCapture = HotkeySetting(character: "-", carbonModifiers: UInt32(cmdKey))
-    static let defaultRecord = HotkeySetting(character: "-", carbonModifiers: UInt32(cmdKey | shiftKey))
+    /// Varsayılanlar ⌃ içerir: düz ⌘– hemen her uygulamada "Uzaklaştır"
+    /// kısayoludur ve global kayıt onu bütün Mac'ten çalardı.
+    static let defaultCapture = HotkeySetting(character: "-", carbonModifiers: UInt32(cmdKey | controlKey))
+    static let defaultRecord = HotkeySetting(character: "-", carbonModifiers: UInt32(cmdKey | controlKey | shiftKey))
 
     /// UserDefaults'a yazılan düz biçim: "karakter|değiştiriciler"
     var serialized: String { "\(character)|\(carbonModifiers)" }
@@ -133,6 +135,15 @@ final class SettingsStore: ObservableObject {
     @Published var islandEnabled: Bool {
         didSet { d.set(islandEnabled, forKey: "islandEnabled") }
     }
+    /// Pano geçmişi tutulsun mu. Kopyalanan HER şey diske yazıldığı için
+    /// varsayılan KAPALI; kullanıcı bilerek açar.
+    @Published var clipboardHistoryEnabled: Bool {
+        didSet { d.set(clipboardHistoryEnabled, forKey: "clipboardHistoryEnabled") }
+    }
+    /// Uygulama kapanırken pano geçmişini diskten sil
+    @Published var clearClipboardHistoryOnQuit: Bool {
+        didSet { d.set(clearClipboardHistoryOnQuit, forKey: "clearClipboardHistoryOnQuit") }
+    }
     /// Yakalama kısayolu (serileştirilmiş)
     @Published var captureHotkeyRaw: String {
         didSet { d.set(captureHotkeyRaw, forKey: "captureHotkeyRaw") }
@@ -172,6 +183,8 @@ final class SettingsStore: ObservableObject {
         editAfterCapture = d.object(forKey: "editAfterCapture") as? Bool ?? true
         previewSeconds = d.object(forKey: "previewSeconds") as? Double ?? 5
         islandEnabled = d.object(forKey: "islandEnabled") as? Bool ?? true
+        clipboardHistoryEnabled = d.object(forKey: "clipboardHistoryEnabled") as? Bool ?? false
+        clearClipboardHistoryOnQuit = d.object(forKey: "clearClipboardHistoryOnQuit") as? Bool ?? false
         captureHotkeyRaw = d.string(forKey: "captureHotkeyRaw") ?? HotkeySetting.defaultCapture.serialized
         recordHotkeyRaw = d.string(forKey: "recordHotkeyRaw") ?? HotkeySetting.defaultRecord.serialized
     }

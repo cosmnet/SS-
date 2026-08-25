@@ -368,7 +368,7 @@ struct StatusPanelView: View {
         let images = clipboard.entries.filter { $0.kind == .image }
         return Group {
             if images.isEmpty {
-                emptyState(icon: "photo.on.rectangle.angled", text: "Pano görsel geçmişi boş")
+                emptyState(icon: "photo.on.rectangle.angled", text: settings.clipboardHistoryEnabled ? "Pano görsel geçmişi boş" : "Pano geçmişi kapalı · Ayarlar → Genel")
             } else {
                 ScrollView {
                     LazyVStack(spacing: 2) {
@@ -430,7 +430,7 @@ struct StatusPanelView: View {
         let texts = clipboard.entries.filter { $0.kind == .text }
         return Group {
             if texts.isEmpty {
-                emptyState(icon: "text.quote", text: "Pano metin geçmişi boş")
+                emptyState(icon: "text.quote", text: settings.clipboardHistoryEnabled ? "Pano metin geçmişi boş" : "Pano geçmişi kapalı · Ayarlar → Genel")
             } else {
                 ScrollView {
                     LazyVStack(spacing: 2) {

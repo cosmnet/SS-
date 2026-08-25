@@ -24,9 +24,10 @@ final class SettingsWindowController {
         let window = NSWindow(contentViewController: hosting)
         window.title = "SS+ Ayarları"
         window.styleMask = [.titled, .closable, .miniaturizable]
-        window.setContentSize(NSSize(width: 500, height: 400))
+        window.setContentSize(NSSize(width: 520, height: 460))
         window.center()
         window.isReleasedWhenClosed = false
+        window.sharingType = .none   // kayıt sırasında açılırsa videoya girmesin
         window.delegate = WindowKeeper.shared
         window.makeKeyAndOrderFront(nil)
         self.window = window
@@ -112,6 +113,35 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - Ortak parçalar
+
+/// Pro'ya özel bir denetimin yanına konan küçük rozet.
+private struct ProBadge: View {
+    var body: some View {
+        Text("PRO")
+            .font(.system(size: 8.5, weight: .heavy, design: .rounded))
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(.linearGradient(
+                colors: [.pink, .purple],
+                startPoint: .leading,
+                endPoint: .trailing
+            )))
+            .foregroundStyle(.white)
+    }
+}
+
+private func groupLabel(_ title: String, _ icon: String) -> some View {
+    Label(title, systemImage: icon)
+        .font(.system(size: 12, weight: .semibold))
+}
+
+private func caption(_ text: String) -> some View {
+    Text(text)
+        .font(.caption)
+        .foregroundStyle(.secondary)
+}
+
 // MARK: - Genel
 
 struct GeneralTab: View {
@@ -124,17 +154,13 @@ struct GeneralTab: View {
                     VStack(alignment: .leading, spacing: 14) {
                         Toggle("Yakalama sonrası düzenleyiciyi aç", isOn: $settings.editAfterCapture)
                             .toggleStyle(.switch)
-                        Text("Çekilen görüntü, bulunduğu yerin üstünde açılan çizim düzenleyicisine düşer.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        caption("Çekilen görüntü, bulunduğu yerin üstünde açılan çizim düzenleyicisine düşer.")
                         Divider()
                         Toggle("Önizleme kartını göster", isOn: $settings.showPreview)
                             .toggleStyle(.switch)
                         if settings.showPreview {
                             HStack {
-                                Text("Kaybolma süresi")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                caption("Kaybolma süresi")
                                 Slider(value: $settings.previewSeconds, in: 2...15, step: 1)
                                     .controlSize(.small)
                                 Text("\(Int(settings.previewSeconds)) sn")
@@ -150,23 +176,42 @@ struct GeneralTab: View {
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 } label: {
-                    Label("Yakalama", systemImage: "camera.viewfinder")
-                        .font(.system(size: 12, weight: .semibold))
+                    groupLabel("Yakalama", "camera.viewfinder")
+                }
+
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Toggle("Pano geçmişini tut", isOn: $settings.clipboardHistoryEnabled)
+                            .toggleStyle(.switch)
+                        caption("Açıkken kopyaladığın son 10 metin ve görsel adada ve menü panelinde listelenir. Bunlar diske yazılır: ~/Library/Application Support/SSPlus/Clipboard. Şifre yöneticilerinin gizli işaretlediği içerik hiçbir zaman kaydedilmez.")
+                        if settings.clipboardHistoryEnabled {
+                            Toggle("Çıkışta geçmişi sil", isOn: $settings.clearClipboardHistoryOnQuit)
+                                .toggleStyle(.switch)
+                            HStack {
+                                Spacer()
+                                Button("Geçmişi şimdi temizle") {
+                                    ClipboardStore.shared.clear()
+                                }
+                                .controlSize(.small)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } label: {
+                    groupLabel("Pano geçmişi", "doc.on.clipboard")
                 }
 
                 GroupBox {
                     VStack(alignment: .leading, spacing: 14) {
                         Toggle("Ada'yı (Island) boşta göster", isOn: $settings.islandEnabled)
                             .toggleStyle(.switch)
-                        Text("Kapatılırsa ada yalnızca kayıt ve seçim sırasında görünür; çentik tamamen sessiz kalır.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        caption("Kapatılırsa ada yalnızca kayıt ve seçim sırasında görünür; çentik tamamen sessiz kalır.")
                     }
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 } label: {
-                    Label("Ada (Island)", systemImage: "rectangle.topthird.inset.filled")
-                        .font(.system(size: 12, weight: .semibold))
+                    groupLabel("Ada (Island)", "rectangle.topthird.inset.filled")
                 }
             }
             .padding(16)
@@ -178,6 +223,7 @@ struct GeneralTab: View {
 
 struct OutputTab: View {
     @ObservedObject private var settings = SettingsStore.shared
+    @ObservedObject private var pro = ProManager.shared
 
     var body: some View {
         ScrollView {
@@ -207,39 +253,96 @@ struct OutputTab: View {
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 } label: {
-                    Label("Konum", systemImage: "externaldrive")
-                        .font(.system(size: 12, weight: .semibold))
+                    groupLabel("Konum", "externaldrive")
                 }
 
                 GroupBox {
                     VStack(alignment: .leading, spacing: 14) {
                         Picker("Görüntü formatı", selection: $settings.imageFormat) {
                             ForEach(ImageFormat.allCases) { format in
-                                Text(format.rawValue).tag(format)
+                                Text(format.title).tag(format)
                             }
                         }
                         .pickerStyle(.segmented)
 
-                        HStack {
-                            Text("Video kare hızı")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            FrameRateButton(fps: 30)
-                            FrameRateButton(fps: 60)
-                        }
+                        Toggle("İmleci ekran görüntüsüne ve videoya dahil et", isOn: $settings.showCursor)
+                            .toggleStyle(.switch)
 
                         Toggle("Akıllı pencere sezme", isOn: $settings.smartWindowDetect)
                             .toggleStyle(.switch)
-                        Text("Alan modunda fare pencere üstündeyken tıklamak o pencereyi yakalar.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        caption("Alan modunda fare pencere üstündeyken tıklamak o pencereyi yakalar.")
                     }
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 } label: {
-                    Label("Kalite", systemImage: "sparkles")
-                        .font(.system(size: 12, weight: .semibold))
+                    groupLabel("Görüntü", "sparkles")
+                }
+
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack {
+                            caption("Kare hızı")
+                            Spacer()
+                            FrameRateButton(fps: 30)
+                            FrameRateButton(fps: 60)
+                            if !pro.isPro { ProBadge() }
+                        }
+
+                        HStack {
+                            caption("Kap")
+                            Spacer()
+                            Picker("", selection: $settings.videoFormat) {
+                                Text("MOV").tag("mov")
+                                Text("MP4").tag("mp4")
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                            .frame(width: 130)
+                        }
+
+                        HStack {
+                            caption("Kodek")
+                            Spacer()
+                            Picker("", selection: $settings.videoCodec) {
+                                Text("H.264").tag("h264")
+                                Text("HEVC").tag("hevc")
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                            .frame(width: 130)
+                            .disabled(!pro.isPro)
+                            if !pro.isPro { ProBadge() }
+                        }
+
+                        HStack {
+                            caption("Bit hızı")
+                            Spacer()
+                            Picker("", selection: $settings.videoBitrateMbps) {
+                                Text("Otomatik").tag(0)
+                                Text("8 Mb/s").tag(8)
+                                Text("16 Mb/s").tag(16)
+                                Text("32 Mb/s").tag(32)
+                            }
+                            .labelsHidden()
+                            .frame(width: 130)
+                            .disabled(!pro.isPro)
+                            if !pro.isPro { ProBadge() }
+                        }
+
+                        HStack {
+                            Toggle("Sistem sesini kaydet", isOn: $settings.recordAudio)
+                                .toggleStyle(.switch)
+                                .disabled(!pro.isPro)
+                            if !pro.isPro { ProBadge() }
+                        }
+                        if !pro.isPro {
+                            caption("Pro olmadan kayıt 30 fps, H.264 ve otomatik bit hızıyla yapılır.")
+                        }
+                    }
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } label: {
+                    groupLabel("Video", "record.circle")
                 }
             }
             .padding(16)
@@ -251,6 +354,7 @@ struct OutputTab: View {
 
 struct ShortcutsTab: View {
     @ObservedObject private var settings = SettingsStore.shared
+    @ObservedObject private var app = AppState.shared
 
     var body: some View {
         ScrollView {
@@ -261,20 +365,20 @@ struct ShortcutsTab: View {
                             title: "Yakalama aracı",
                             icon: "camera.viewfinder",
                             tint: .purple,
-                            hotkey: captureBinding
+                            hotkey: captureBinding,
+                            conflictsWith: settings.recordHotkey
                         )
                         Divider().padding(.leading, 44)
                         ShortcutRecorderRow(
-                            title: "Video kaydı",
+                            title: "Video kaydı başlat / durdur",
                             icon: "record.circle",
                             tint: .red,
-                            hotkey: recordBinding
+                            hotkey: recordBinding,
+                            conflictsWith: settings.captureHotkey
                         )
                         Divider().padding(.leading, 44)
                         HStack {
-                            Text("Varsayılanlara dön")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            caption("Varsayılanlara dön")
                             Spacer()
                             Button("Sıfırla") {
                                 settings.captureHotkey = .defaultCapture
@@ -284,11 +388,19 @@ struct ShortcutsTab: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
+
+                        if let warning = app.hotkeyWarning {
+                            Label(warning, systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 12)
+                                .padding(.bottom, 8)
+                        }
                     }
                     .padding(.vertical, 4)
                 } label: {
-                    Label("Genel kısayollar", systemImage: "command")
-                        .font(.system(size: 12, weight: .semibold))
+                    groupLabel("Genel kısayollar", "command")
                 }
 
                 GroupBox {
@@ -303,23 +415,23 @@ struct ShortcutsTab: View {
                     )
                     .padding(.vertical, 4)
                 } label: {
-                    Label("Seçim ekranı", systemImage: "cursorarrow.rays")
-                        .font(.system(size: 12, weight: .semibold))
+                    groupLabel("Seçim ekranı", "cursorarrow.rays")
                 }
 
                 GroupBox {
                     ShortcutRow(
                         rows: [
                             ("1–7", "Araç seç"),
+                            ("⌘Z · ⇧⌘Z", "Geri al · yinele"),
+                            ("⌫", "Son öğeyi geri al"),
                             ("↩", "Bitti · kaydet"),
-                            ("Esc", "Vazgeç"),
-                            ("⌫", "Son öğeyi sil"),
+                            ("Esc", "Çizimsiz aktar"),
+                            ("⌘.", "Vazgeç"),
                         ]
                     )
                     .padding(.vertical, 4)
                 } label: {
-                    Label("Çizim düzenleyici", systemImage: "pencil.tip.crop.circle")
-                        .font(.system(size: 12, weight: .semibold))
+                    groupLabel("Çizim düzenleyici", "pencil.tip.crop.circle")
                 }
             }
             .padding(16)
@@ -342,18 +454,24 @@ struct ShortcutsTab: View {
 }
 
 /// Kare hızı seçim düğmesi (tip çıkarımını hafifletmek için ayrı view).
+/// 60 fps Pro'ya özeldir: seçilebilir gibi görünüp sessizce 30'a düşmesin.
 private struct FrameRateButton: View {
     @ObservedObject private var settings = SettingsStore.shared
+    @ObservedObject private var pro = ProManager.shared
     let fps: Int
 
+    private var locked: Bool { fps > 30 && !pro.isPro }
+
     var body: some View {
-        let selected = settings.fps == fps
+        let selected = settings.fps == fps && !locked
         Button("\(fps) fps") {
             settings.fps = fps
         }
         .controlSize(.small)
         .buttonStyle(.borderedProminent)
         .tint(selected ? Color.accentColor : Color.gray.opacity(0.3))
+        .disabled(locked)
+        .help(locked ? "60 fps yalnızca Pro'da" : "")
     }
 }
 
@@ -364,18 +482,28 @@ struct ShortcutRecorderRow: View {
     let icon: String
     let tint: Color
     @Binding var hotkey: HotkeySetting
+    /// Diğer global kısayol: aynısı seçilirse reddedilir (ikisi birden kaydedilemez).
+    var conflictsWith: HotkeySetting?
 
     @State private var recording = false
     @State private var monitor: Any?
     @State private var invalidFlash = false
+    @State private var reason: String?
 
     var body: some View {
-        HStack {
-            Label(title, systemImage: icon)
-                .font(.system(size: 13))
-                .foregroundStyle(tint == .red ? .red : .primary)
-            Spacer()
-            recordButton
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Label(title, systemImage: icon)
+                    .font(.system(size: 13))
+                    .foregroundStyle(tint == .red ? .red : .primary)
+                Spacer()
+                recordButton
+            }
+            if let reason {
+                Text(reason)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
@@ -411,26 +539,41 @@ struct ShortcutRecorderRow: View {
     private func startRecording() {
         stopRecording()
         recording = true
+        reason = nil
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
             // Esc: vazgeç
             if event.keyCode == 53 {
                 stopRecording()
                 return nil
             }
-            guard let characters = event.charactersIgnoringModifiers, let first = characters.first else {
-                flashInvalid()
+            // Karakteri DÜZENDEN, değiştiricisiz çöz: ⇧1 → "1", ok tuşları → nil.
+            guard let char = HotKeyManager.shared.baseCharacter(forKeyCode: event.keyCode),
+                  Self.isBindable(char) else {
+                flashInvalid("Bu tuş kısayol olamaz; harf, rakam ya da noktalama seç.")
                 return nil
             }
             let carbonMods = HotkeySetting.carbonModifiers(from: event.modifierFlags)
             guard carbonMods != 0 else {
-                // Değiştiricisiz kısayol global olarak anlamsız
-                flashInvalid()
+                flashInvalid("En az bir değiştirici (⌘ ⌥ ⌃ ⇧) gerekli.")
                 return nil
             }
-            hotkey = HotkeySetting(character: String(first).lowercased(), carbonModifiers: carbonMods)
+            let candidate = HotkeySetting(character: String(char), carbonModifiers: carbonMods)
+            if let other = conflictsWith, other == candidate {
+                flashInvalid("Bu kısayol diğer eylemde kullanılıyor.")
+                return nil
+            }
+            hotkey = candidate
             stopRecording()
             return nil
         }
+    }
+
+    /// Yazdırılabilir, özel-kullanım olmayan tek karakterler bağlanabilir.
+    private static func isBindable(_ char: Character) -> Bool {
+        guard let scalar = char.unicodeScalars.first, char.unicodeScalars.count == 1 else { return false }
+        if (0xE000...0xF8FF).contains(scalar.value) { return false }   // ok / işlev tuşları
+        if scalar.properties.generalCategory == .control || char.isWhitespace { return false }
+        return char.isLetter || char.isNumber || char.isPunctuation || char.isSymbol
     }
 
     private func stopRecording() {
@@ -441,7 +584,8 @@ struct ShortcutRecorderRow: View {
         recording = false
     }
 
-    private func flashInvalid() {
+    private func flashInvalid(_ why: String) {
+        reason = why
         withAnimation(.easeInOut(duration: 0.12).repeatCount(2, autoreverses: true)) {
             invalidFlash = true
         }
@@ -524,17 +668,17 @@ struct ProTab: View {
                         Divider()
                         codeSection
                         Divider()
+                        // Tek kaynak: ProManager.features (README ve OKU-BENI de buna uyar)
                         VStack(alignment: .leading, spacing: 6) {
-                            featureRow("text.viewfinder", "OCR: görüntüden metin çıkarma")
-                            featureRow("paintpalette", "Ekstra vurgu renkleri ve çıkartmalar")
-                            featureRow("film.stack", "Kayıtta kare üstü tarih-saat damgası")
+                            ForEach(Array(ProManager.features.enumerated()), id: \.offset) { _, feature in
+                                featureRow(feature.icon, feature.title, feature.detail)
+                            }
                         }
                     }
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 } label: {
-                    Label("Abonelik", systemImage: "crown")
-                        .font(.system(size: 12, weight: .semibold))
+                    groupLabel("Abonelik", "crown")
                 }
             }
             .padding(16)
@@ -564,9 +708,7 @@ struct ProTab: View {
             }
         } else {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Etkinleştirme kodu")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                caption("Etkinleştirme kodu")
                 HStack(spacing: 8) {
                     TextField("Kodu gir", text: $codeInput)
                         .textFieldStyle(.roundedBorder)
@@ -598,15 +740,19 @@ struct ProTab: View {
         }
     }
 
-    private func featureRow(_ icon: String, _ text: String) -> some View {
-        HStack(spacing: 8) {
+    private func featureRow(_ icon: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
-            Text(text)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }

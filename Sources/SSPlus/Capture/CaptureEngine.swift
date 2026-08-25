@@ -6,6 +6,7 @@ enum CaptureError: LocalizedError {
     case noWindow
     case permissionDenied
     case encodeFailed
+    case noFrames
 
     var errorDescription: String? {
         switch self {
@@ -13,6 +14,7 @@ enum CaptureError: LocalizedError {
         case .noWindow: return "Pencere bulunamadı."
         case .permissionDenied: return "Ekran kaydı izni gerekiyor. Sistem Ayarları → Gizlilik ve Güvenlik → Ekran Kaydı bölümünden SS+ için izin verin."
         case .encodeFailed: return "Görüntü kodlanamadı."
+        case .noFrames: return "Kayıt sırasında hiç kare alınamadı; dosya oluşturulmadı."
         }
     }
 }

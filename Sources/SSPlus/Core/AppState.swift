@@ -9,21 +9,16 @@ final class AppState: ObservableObject {
         case idle
         case selecting(SelectionMode, SelectionStyle)
         case recording
-
-        static func == (lhs: Phase, rhs: Phase) -> Bool {
-            switch (lhs, rhs) {
-            case (.idle, .idle), (.recording, .recording): return true
-            case let (.selecting(m1, _), .selecting(m2, _)): return m1 == m2
-            default: return false
-            }
-        }
     }
 
     @Published var phase: Phase = .idle
     @Published var recordingSeconds: Int = 0
+    /// Global kısayol kaydı başarısız olduysa Ayarlar'da gösterilen uyarı.
+    @Published var hotkeyWarning: String?
 
     private var recorder: ScreenRecorder?
     private var recordingTimer: Timer?
+    private var recordingStart: Date?
 
     private init() {}
 
@@ -35,12 +30,21 @@ final class AppState: ObservableObject {
 
     // MARK: - Ekran görüntüsü akışı
 
+    /// Düzenleyici açıkken yeni bir yakalama başlatılmaz: sonuç sessizce
+    /// düzenlenmeden aktarılırdı. Kullanıcı önce düzenlemeyi bitirmeli.
+    private var editorBlocksCapture: Bool {
+        guard AnnotationEditorController.shared.isPresenting else { return false }
+        NSSound.beep()
+        return true
+    }
+
     func beginCapture(_ mode: SelectionMode) {
         guard !isRecording else { return }
         if SelectionOverlayController.shared.isActive {
             SelectionOverlayController.shared.cancel()
             return
         }
+        guard !editorBlocksCapture else { return }
         // İzin yoksa seçim katmanını hiç açma: kullanıcı alanı seçtikten sonra
         // hata almasın.
         guard PermissionManager.ensureScreenCapturePermission() else { return }
@@ -58,6 +62,7 @@ final class AppState: ObservableObject {
 
     func captureFullScreen() {
         guard !isRecording else { return }
+        guard !editorBlocksCapture else { return }
         guard PermissionManager.ensureScreenCapturePermission() else { return }
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
@@ -116,6 +121,7 @@ final class AppState: ObservableObject {
             SelectionOverlayController.shared.cancel()
             return
         }
+        guard !editorBlocksCapture else { return }
         guard PermissionManager.ensureScreenCapturePermission() else { return }
         SelectionOverlayController.shared.begin(mode: .rect, style: .recording) { [weak self] result in
             guard let self, let result else { return }
@@ -133,10 +139,10 @@ final class AppState: ObservableObject {
         try? FileManager.default.createDirectory(at: settings.saveFolder, withIntermediateDirectories: true)
 
         let recorder = ScreenRecorder(url: url)
-        recorder.onFailure = { [weak self] error in
+        recorder.onFailure = { [weak self, weak recorder] error in
             Task { @MainActor in
-                self?.finishRecordingUI()
-                self?.presentError(error)
+                guard let self, let recorder else { return }
+                self.handleStreamFailure(error, recorder: recorder)
             }
         }
         do {
@@ -149,9 +155,14 @@ final class AppState: ObservableObject {
             )
             self.recorder = recorder
             recordingSeconds = 0
+            recordingStart = Date()
             phase = .recording
-            let timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-                Task { @MainActor in self?.recordingSeconds += 1 }
+            let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
+                Task { @MainActor in
+                    guard let self, let start = self.recordingStart else { return }
+                    let elapsed = Int(Date().timeIntervalSince(start))
+                    if elapsed != self.recordingSeconds { self.recordingSeconds = elapsed }
+                }
             }
             RunLoop.main.add(timer, forMode: .common)
             recordingTimer = timer
@@ -164,15 +175,48 @@ final class AppState: ObservableObject {
         guard let recorder else { return }
         self.recorder = nil
         finishRecordingUI()
-        Task {
-            let url = await recorder.stop()
-            OutputPipeline.deliverVideo(url: url)
+        Task { await finalize(recorder, interruptedBy: nil) }
+    }
+
+    /// Uygulama kapanmadan önce çağrılır: kaydı durdurur ve dosya diske
+    /// tamamen yazılana dek BEKLER. Aksi hâlde .mov dosyası oynatılamaz kalır.
+    func finishRecordingForTermination() async {
+        guard let recorder else { return }
+        self.recorder = nil
+        finishRecordingUI()
+        await finalize(recorder, interruptedBy: nil)
+    }
+
+    /// Akış kendi kendine durduğunda (ekran uykusu, kilit, monitör çıkarma…)
+    /// o ana kadar alınan kareler KAYBEDİLMEZ: dosya kapatılıp teslim edilir,
+    /// ardından kesinti nedeni gösterilir.
+    private func handleStreamFailure(_ error: Error, recorder failed: ScreenRecorder) {
+        guard recorder === failed else { return }
+        recorder = nil
+        finishRecordingUI()
+        Task { await finalize(failed, interruptedBy: error) }
+    }
+
+    private func finalize(_ recorder: ScreenRecorder, interruptedBy: Error?) async {
+        do {
+            let url = try await recorder.stop()
+            OutputPipeline.deliverVideo(
+                url: url,
+                note: interruptedBy == nil ? nil : "Kayıt kesildi; buraya kadarki kısım kaydedildi"
+            )
+        } catch {
+            presentError(error)
+            return
+        }
+        if let interruptedBy {
+            presentError(interruptedBy)
         }
     }
 
     private func finishRecordingUI() {
         recordingTimer?.invalidate()
         recordingTimer = nil
+        recordingStart = nil
         recordingSeconds = 0
         phase = .idle
     }

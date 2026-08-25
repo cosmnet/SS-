@@ -57,12 +57,16 @@ final class HotKeyManager {
     ///   - modifiers: Carbon değiştirici maskesi (`cmdKey`, `shiftKey`…).
     ///   - id: Grubun taban kimliği. Gerçek `EventHotKeyID`'ler `id * 100 + n` olur.
     ///   - action: Kısayol tetiklendiğinde çalışacak blok (ana kuyrukta çağrılır).
+    /// - Returns: En az bir tuş kodu sisteme kaydedilebildiyse `true`. `false`
+    ///   dönerse kısayol HİÇ çalışmayacaktır (çakışma, çözülemeyen karakter…);
+    ///   çağıran bunu kullanıcıya göstermelidir.
+    @discardableResult
     func registerForCharacter(
         _ character: Character,
         modifiers: UInt32,
         id: UInt32,
         action: @escaping () -> Void
-    ) {
+    ) -> Bool {
         installHandlerIfNeeded()
         observeLayoutChangesIfNeeded()
         unregisterCharacter(id: id)
@@ -75,6 +79,40 @@ final class HotKeyManager {
         )
         bind(&entry)
         characterHotKeys[id] = entry
+        return !entry.refs.isEmpty
+    }
+
+    /// Yürürlükteki düzende `keyCode` tuşunun DEĞİŞTİRİCİSİZ ürettiği karakter.
+    ///
+    /// Kısayol kaydedicisi bunu kullanır: `charactersIgnoringModifiers` ⇧'i
+    /// yok saymaz (⇧1 → "!") ve ok tuşları için özel-kullanım karakterleri
+    /// döndürür; ikisi de sonradan hiçbir tuş koduna çözülemeyip sessizce
+    /// çalışmayan kısayollar üretirdi.
+    func baseCharacter(forKeyCode keyCode: UInt16) -> Character? {
+        guard let source = currentLayoutSource(),
+              let pointer = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
+        defer { withExtendedLifetime(source) {} }
+        let layoutData = Unmanaged<CFData>.fromOpaque(pointer).takeUnretainedValue()
+        guard let bytes = CFDataGetBytePtr(layoutData) else { return nil }
+        let layout = UnsafeRawPointer(bytes).assumingMemoryBound(to: UCKeyboardLayout.self)
+
+        var deadKeyState: UInt32 = 0
+        var length = 0
+        var characters = [UniChar](repeating: 0, count: 8)
+        let status = UCKeyTranslate(
+            layout,
+            keyCode,
+            UInt16(kUCKeyActionDown),
+            0,
+            UInt32(LMGetKbdType()),
+            OptionBits(kUCKeyTranslateNoDeadKeysBit),
+            &deadKeyState,
+            characters.count,
+            &length,
+            &characters
+        )
+        guard status == noErr, length > 0 else { return nil }
+        return String(utf16CodeUnits: characters, count: length).lowercased().first
     }
 
     /// Bir karakter grubunun tüm kayıtlarını kaldırır.

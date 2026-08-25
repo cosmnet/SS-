@@ -12,19 +12,25 @@ Swift + SwiftUI + ScreenCaptureKit ile yazılmıştır. Harici bağımlılık yo
 
 - **Island arayüzü** — Çentikte duran, üzerine 1.2 sn bekleyince açılan kompakt araç çubuğu.
   Yalnızca kayıt ve seçimde zorunlu görünür; ayarlardan tamamen kapatılabilir.
-- **⌘ –  ile anında yakalama** — Son kullandığın modu hatırlar.
+- **⌃⌘ –  ile anında yakalama** — Son kullandığın modu hatırlar (kısayol Ayarlar'dan değiştirilebilir).
   - **Alan** (dikdörtgen sürükleme, ⇧ ile kare)
   - **Pencere** — üzerine geldiğin pencereyi vurgular, tıklayınca yakalar
   - **Tüm ekran** — seçim sırasında `↩` ya da menüden
 - **Video kaydı** — ScreenCaptureKit + AVAssetWriter ile alan bazlı `.mov` kaydı (H.264).
 - **Önizleme kartı** — Yakaladıktan sonra sağ altta belirir; kopyalayabilir, Finder'da
   gösterebilir, silebilir, hatta doğrudan **başka bir uygulamaya sürükleyip bırakabilirsin**.
-  8 saniye sonra kendiliğinden kapanır (üzerine gelirsen beklemeye alır).
-- **Ayarlar** — Kaydetme klasörü, PNG/JPEG formatı, panoya kopyalama, imleç, ses, önizleme.
+  Ayarlardaki süre (varsayılan 5 sn) sonunda kendiliğinden kapanır; üzerine gelirsen beklemeye alır.
+- **Ayarlar** — Kaydetme klasörü, PNG/JPEG formatı, panoya kopyalama, imleç, önizleme;
+  video için kap (MOV/MP4), kodek, bit hızı ve sistem sesi.
+- **Pano geçmişi (isteğe bağlı)** — Açıksa son 10 kopyalama adada ve menü panelinde listelenir.
+  Varsayılan olarak **kapalıdır**; açıldığında kopyalananlar
+  `~/Library/Application Support/SSPlus/Clipboard` altına yazılır. Şifre yöneticilerinin gizli
+  işaretlediği içerik hiçbir zaman kaydedilmez; "Çıkışta geçmişi sil" seçeneği vardır.
 - **Pro (demo)**
   - **Metin Kopyala (OCR)** — Görüntüdeki yazıyı Vision ile tanıyıp panoya alır
   - **60 FPS** video kaydı
   - **Sistem sesi** kaydı
+  - **HEVC** kodeği ve özel bit hızı
 
 > Pro özellikleri **Ayarlar → Pro → Etkinleştirme kodu** alanına geçerli bir kod
 > girilerek açılır. Kod doğrulaması tamamen yereldir; hiçbir veri dışarı gönderilmez.
@@ -91,7 +97,7 @@ SS+ ekranı okuyabilmek için macOS'un **Ekran Kaydı** iznine ihtiyaç duyar.
 killall SSPlus 2>/dev/null; open "dist/SS+.app"
 ```
 
-Uygulama menü çubuğunda `􀎼` (kamera vizörü) simgesiyle görünür — Dock'ta ikon oluşmaz
+Uygulama menü çubuğunda kamera vizörü (`camera.viewfinder`) simgesiyle görünür — Dock'ta ikon oluşmaz
 (`LSUIElement`).
 
 ---
@@ -100,13 +106,16 @@ Uygulama menü çubuğunda `􀎼` (kamera vizörü) simgesiyle görünür — Do
 
 | Kısayol | İşlev |
 | --- | --- |
-| `⌘ –` | Yakalama aracını aç (son kullanılan mod) |
-| `⇧⌘ –` | Video kaydını başlat / durdur |
-| `R` | Seçim sırasında **alan** moduna geç |
-| `W` | Seçim sırasında **pencere** moduna geç |
+| `⌃⌘ –` | Yakalama aracını aç (son kullanılan mod) |
+| `⌃⇧⌘ –` | Video kaydını başlat / durdur |
+| `R` / `A` | Seçim sırasında **alan** moduna geç |
+| `W` / `P` | Seçim sırasında **pencere** moduna geç |
 | `⇧` | Seçim sırasında kare oranına kilitle |
 | `↩` | Seçim sırasında tüm ekranı yakala |
 | `Esc` | Seçimi iptal et |
+| `1`–`7` | Düzenleyicide araç seç |
+| `⌘Z` / `⇧⌘Z` / `⌫` | Düzenleyicide geri al / yinele / son öğeyi geri al |
+| `↩` / `Esc` / `⌘.` | Düzenleyicide kaydet / çizimsiz aktar / vazgeç |
 | `⌘ ,` | Ayarları aç |
 | `⌘ Q` | Çıkış |
 
@@ -117,7 +126,7 @@ Uygulama menü çubuğunda `􀎼` (kamera vizörü) simgesiyle görünür — Do
 ```
 Sources/SSPlus/
 ├── main.swift                  # Giriş noktası (.accessory politikası)
-├── App/AppDelegate.swift       # Menü çubuğu, global kısayollar, açılış
+├── App/AppDelegate.swift       # Menü çubuğu, global kısayollar, açılış, kayıt sürerken güvenli çıkış
 ├── Core/
 │   ├── AppState.swift          # Uygulama durumu ve yakalama/kayıt akışı
 │   └── OutputPipeline.swift    # Dosyaya yazma, pano, ses, önizleme
@@ -127,13 +136,19 @@ Sources/SSPlus/
 │   └── SelectionOverlay.swift  # Tam ekran seçim katmanı
 ├── UI/
 │   ├── Island.swift            # Dinamik ada + pano şeridi
+│   ├── NotchMetrics.swift      # Çentik ölçümü (NSScreen'den dinamik)
+│   ├── NotchAlignmentTest.swift# Çentik hizalama test katmanı
+│   ├── Logo.swift              # Vektör marka
 │   ├── PreviewPanel.swift      # Yakalama sonrası önizleme kartı
 │   ├── StatusPanel.swift       # Menü çubuğu dosya/pano paneli
 │   ├── AnnotationEditor.swift  # Yerinde çizim düzenleyici
+│   ├── RecordingDrawOverlay.swift # Kayıt sırasında ekrana çizim
 │   └── SettingsWindow.swift    # Ayarlar (kısayol kayıtçısı dahil)
 └── Support/
     ├── Settings.swift          # UserDefaults destekli ayarlar
-    ├── ClipboardHistory.swift  # Pano geçmişi (son 10)
+    ├── ClipboardHistory.swift  # Pano geçmişi (isteğe bağlı, son 10)
+    ├── Notifications.swift     # Uygulama içi bildirim adları
+    ├── UIShotExport.swift      # Pazarlama görselleri (--export-ui-shots)
     ├── StrokeSmoothing.swift   # Fırça sabitleyici + Catmull-Rom
     ├── Permissions.swift       # Ekran kaydı izni + onarım
     ├── Pro.swift               # Pro bayrağı + OCR servisi

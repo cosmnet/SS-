@@ -3,10 +3,28 @@ import AppKit
 @MainActor
 enum OutputPipeline {
 
-    static func fileName(prefix: String, ext: String) -> String {
+    private static let nameFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")   // yerel rakam sistemlerinden bağımsız
         formatter.dateFormat = "yyyy-MM-dd 'saat' HH.mm.ss"
-        return "\(prefix) \(formatter.string(from: Date())).\(ext)"
+        return formatter
+    }()
+
+    static func fileName(prefix: String, ext: String) -> String {
+        "\(prefix) \(nameFormatter.string(from: Date())).\(ext)"
+    }
+
+    /// Aynı saniyede ikinci yakalama öncekinin üstüne yazmasın: " 2", " 3"… eklenir.
+    private static func uniqueURL(in folder: URL, prefix: String, ext: String) -> URL {
+        let base = folder.appendingPathComponent(fileName(prefix: prefix, ext: ext))
+        guard FileManager.default.fileExists(atPath: base.path) else { return base }
+        let stem = base.deletingPathExtension().lastPathComponent
+        var n = 2
+        while true {
+            let candidate = folder.appendingPathComponent("\(stem) \(n).\(ext)")
+            if !FileManager.default.fileExists(atPath: candidate.path) { return candidate }
+            n += 1
+        }
     }
 
     static func deliverImage(_ cgImage: CGImage, scale: CGFloat) {
@@ -24,19 +42,20 @@ enum OutputPipeline {
         }
 
         try? FileManager.default.createDirectory(at: settings.saveFolder, withIntermediateDirectories: true)
-        let url = settings.saveFolder.appendingPathComponent(fileName(prefix: "SS+", ext: format.fileExtension))
+        let url = uniqueURL(in: settings.saveFolder, prefix: "SS+", ext: format.fileExtension)
         do {
             try data.write(to: url)
         } catch {
+            // Dosya yoksa önizleme kartı, ses ve pano da olmasın: kart var
+            // olmayan bir dosyaya "Göster / Sil" sunardı.
             AppState.shared.presentError(error)
+            return
         }
 
         let nsImage = NSImage(cgImage: cgImage, size: rep.size)
 
         if settings.copyToClipboard {
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.writeObjects([nsImage])
+            copyToPasteboard(nsImage, encoded: data, fileExtension: format.fileExtension)
         }
         if settings.playSound {
             NSSound(named: "Pop")?.play()
@@ -58,24 +77,41 @@ enum OutputPipeline {
             height: CGFloat(cgImage.height) / scale
         )
         guard let data = encode(rep, format: format) else { return }
-        try? data.write(to: url, options: .atomic)
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            AppState.shared.presentError(error)
+            return
+        }
 
         if settings.copyToClipboard {
             let nsImage = NSImage(cgImage: cgImage, size: rep.size)
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.writeObjects([nsImage])
+            copyToPasteboard(nsImage, encoded: data, fileExtension: format.fileExtension)
         }
     }
 
-    static func deliverVideo(url: URL) {
+    static func deliverVideo(url: URL, note: String? = nil) {
         let settings = SettingsStore.shared
         if settings.playSound {
             NSSound(named: "Glass")?.play()
         }
         if settings.showPreview {
-            PreviewPanelController.shared.show(.video(url))
+            PreviewPanelController.shared.show(.video(url), note: note)
         }
+    }
+
+    /// Görüntüyü panoya yazar ve pano geçmişine ZATEN kodlanmış veriyi verir;
+    /// böylece geçmiş, SS+'ın kendi yakalamasını ana iş parçacığında yeniden
+    /// PNG'ye çevirmek zorunda kalmaz.
+    private static func copyToPasteboard(_ image: NSImage, encoded data: Data, fileExtension: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects([image])
+        ClipboardStore.shared.noteOwnCapture(
+            encoded: data,
+            fileExtension: fileExtension,
+            pasteboardChangeCount: pasteboard.changeCount
+        )
     }
 
     private static func encode(_ rep: NSBitmapImageRep, format: ImageFormat) -> Data? {

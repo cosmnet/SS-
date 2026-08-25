@@ -14,6 +14,7 @@ final class ProManager: ObservableObject {
         ("text.viewfinder", "Metin Kopyala (OCR)", "Ekran görüntüsündeki yazıyı tek tıkla panoya al"),
         ("speedometer", "60 FPS Video", "Akıcı, yüksek kare hızında ekran kaydı"),
         ("speaker.wave.2.fill", "Sistem Sesi", "Video kaydına sistem sesini dahil et"),
+        ("film", "HEVC ve özel bit hızı", "Daha küçük dosya, daha yüksek kalite"),
         ("scroll", "Kaydırmalı Yakalama", "Uzun sayfaları tek görüntüde birleştir (yakında)"),
         ("icloud.and.arrow.up", "Anında Paylaşım Linki", "Yakaladığını buluta yükle, linki paylaş (yakında)"),
     ]
