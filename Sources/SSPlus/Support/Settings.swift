@@ -224,7 +224,7 @@ final class SettingsStore: ObservableObject {
         videoCodec = d.string(forKey: "videoCodec") ?? "h264"
         videoBitrateMbps = d.object(forKey: "videoBitrateMbps") as? Int ?? 0
         smartWindowDetect = d.object(forKey: "smartWindowDetect") as? Bool ?? true
-        editAfterCapture = d.object(forKey: "editAfterCapture") as? Bool ?? true
+        editAfterCapture = d.object(forKey: "editAfterCapture") as? Bool ?? false
         previewSeconds = d.object(forKey: "previewSeconds") as? Double ?? 5
         islandEnabled = d.object(forKey: "islandEnabled") as? Bool ?? true
         clipboardHistoryEnabled = d.object(forKey: "clipboardHistoryEnabled") as? Bool ?? false
