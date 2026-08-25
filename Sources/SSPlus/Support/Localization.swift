@@ -259,6 +259,39 @@ enum Localization {
         "Bitti · kaydet": "Done · save",
         "Çizimsiz aktar": "Save without drawings",
 
+        // Google Drive
+        "Bu derlemede Google istemci kimliği yok (Resources/GoogleOAuth.plist). Kurulum için README'ye bak.":
+            "This build has no Google client ID (Resources/GoogleOAuth.plist). See the README for setup.",
+        "Kendi Google hesabınla oturum açarsın; belirteçler yalnızca bu Mac'in Anahtar Zinciri'nde tutulur, SS+ geliştiricisinin Drive'ına erişimi olmaz.":
+            "You sign in with your own Google account; tokens are kept only in this Mac's Keychain, and the SS+ developer has no access to your Drive.",
+        "Google ile oturum aç": "Sign in with Google",
+        "Tarayıcıda Google onayı bekleniyor…": "Waiting for Google consent in the browser…",
+        "Çıkış yap": "Sign out",
+        "Ekran görüntülerini Drive'a yükle": "Upload screenshots to Drive",
+        "Klasör": "Folder",
+        "Drive'da aç": "Open in Drive",
+        "Klasör Drive'ının kökünde oluşturulur; sonra Drive'da istediğin yere taşıyabilir ya da adını değiştirebilirsin — yüklemeler onu izlemeye devam eder.":
+            "The folder is created at the root of your Drive; you can then move or rename it anywhere in Drive — uploads keep following it.",
+        "Bağlantıyla herkese açık paylaş": "Share with anyone who has the link",
+        "Linki panoya kopyala": "Copy the link to the clipboard",
+        "Drive'a yükleniyor…": "Uploading to Drive…",
+        "Drive linki kopyalandı": "Drive link copied",
+        "Drive'a yüklendi": "Uploaded to Drive",
+        "Drive yüklemesi başarısız": "Drive upload failed",
+        "Drive linkini kopyala": "Copy Drive link",
+        "Google Drive'da aç": "Open in Google Drive",
+        "Bağlantı alınamadı": "No link returned",
+        "Google Drive için istemci kimliği ayarlanmamış.": "No Google client ID is configured for Drive.",
+        "Oturum açma iptal edildi.": "Sign-in was cancelled.",
+        "Güvenlik doğrulaması başarısız (state).": "Security check failed (state mismatch).",
+        "Yerel geri dönüş sunucusu başlatılamadı.": "The local callback server could not be started.",
+        "Google belirteci alınamadı: %@": "Could not obtain a Google token: %@",
+        "Google oturumu yok; Ayarlar'dan oturum aç.": "Not signed in to Google; sign in from Settings.",
+        "Google oturumu süresi doldu; Ayarlar'dan yeniden oturum aç.": "Your Google session expired; sign in again from Settings.",
+        "Google Drive hatası (%d): %@": "Google Drive error (%d): %@",
+        "Google Drive beklenmeyen bir yanıt verdi.": "Google Drive returned an unexpected response.",
+        "Tamam, SS+'a dönebilirsin.": "All set — you can return to SS+.",
+
         // Ayarlar — Pro
         "Abonelik": "Subscription",
         "SS+ Pro aktif": "SS+ Pro is active",

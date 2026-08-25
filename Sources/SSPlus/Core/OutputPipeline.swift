@@ -59,6 +59,8 @@ enum OutputPipeline {
         if settings.showPreview {
             PreviewPanelController.shared.show(.image(nsImage, url, cgImage, scale))
         }
+        // Kart gösterildikten SONRA: yükleme durumu karta işlenir.
+        DriveUploadCoordinator.shared.upload(imageData: data, mimeType: format.mimeType, localURL: url)
     }
 
     /// Düzenleyiciden dönen sonucu VAR OLAN dosyanın üstüne yazar.
@@ -84,6 +86,8 @@ enum OutputPipeline {
             let nsImage = NSImage(cgImage: cgImage, size: rep.size)
             copyToPasteboard(nsImage, encoded: data, fileExtension: format.fileExtension)
         }
+        // Drive'daki dosya da güncellenir (aynı kimlik, aynı bağlantı).
+        DriveUploadCoordinator.shared.upload(imageData: data, mimeType: format.mimeType, localURL: url)
     }
 
     static func deliverVideo(url: URL, note: String? = nil) {

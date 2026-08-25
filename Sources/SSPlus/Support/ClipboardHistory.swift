@@ -195,6 +195,12 @@ final class ClipboardStore: ObservableObject {
         }
     }
 
+    /// SS+'ın kendi yazdığı metin (örn. Drive paylaşım linki) geçmişe yabancı
+    /// bir kopya olarak düşmesin.
+    func markOwnChange(_ pasteboardChangeCount: Int) {
+        lastChangeCount = pasteboardChangeCount
+    }
+
     private func insertImage(fileName: String, thumbnail: NSImage) {
         let entry = ClipboardEntry(id: UUID(), kind: .image, date: Date(), text: nil, imageFile: fileName)
         thumbnails[entry.id] = thumbnail

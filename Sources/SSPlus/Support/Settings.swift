@@ -73,6 +73,12 @@ enum ImageFormat: String, CaseIterable, Identifiable {
         }
     }
     var fileExtension: String { rawValue }
+    var mimeType: String {
+        switch self {
+        case .png: return "image/png"
+        case .jpg: return "image/jpeg"
+        }
+    }
 }
 
 @MainActor
@@ -144,6 +150,29 @@ final class SettingsStore: ObservableObject {
     @Published var clearClipboardHistoryOnQuit: Bool {
         didSet { d.set(clearClipboardHistoryOnQuit, forKey: "clearClipboardHistoryOnQuit") }
     }
+    // MARK: Google Drive
+
+    /// Ekran görüntülerini Drive'a yükle
+    @Published var driveUploadEnabled: Bool {
+        didSet { d.set(driveUploadEnabled, forKey: "driveUploadEnabled") }
+    }
+    /// Yüklenen dosyayı "bağlantıya sahip herkes" ile paylaş
+    @Published var driveShareAnyone: Bool {
+        didSet { d.set(driveShareAnyone, forKey: "driveShareAnyone") }
+    }
+    /// Paylaşım bağlantısını panoya kopyala
+    @Published var driveCopyLink: Bool {
+        didSet { d.set(driveCopyLink, forKey: "driveCopyLink") }
+    }
+    /// Drive'da oluşturulacak klasörün adı
+    @Published var driveFolderName: String {
+        didSet { d.set(driveFolderName, forKey: "driveFolderName") }
+    }
+    /// Oluşturulan klasörün Drive kimliği (kullanıcı taşısa da geçerli kalır)
+    @Published var driveFolderID: String {
+        didSet { d.set(driveFolderID, forKey: "driveFolderID") }
+    }
+
     /// Arayüz dili: "system" | "tr" | "en"
     @Published var languageRaw: String {
         didSet {
@@ -196,6 +225,11 @@ final class SettingsStore: ObservableObject {
         islandEnabled = d.object(forKey: "islandEnabled") as? Bool ?? true
         clipboardHistoryEnabled = d.object(forKey: "clipboardHistoryEnabled") as? Bool ?? false
         clearClipboardHistoryOnQuit = d.object(forKey: "clearClipboardHistoryOnQuit") as? Bool ?? false
+        driveUploadEnabled = d.object(forKey: "driveUploadEnabled") as? Bool ?? false
+        driveShareAnyone = d.object(forKey: "driveShareAnyone") as? Bool ?? true
+        driveCopyLink = d.object(forKey: "driveCopyLink") as? Bool ?? true
+        driveFolderName = d.string(forKey: "driveFolderName") ?? "SS+"
+        driveFolderID = d.string(forKey: "driveFolderID") ?? ""
         let storedLanguage = d.string(forKey: "language") ?? "system"
         languageRaw = storedLanguage
         Localization.preference = AppLanguage(rawValue: storedLanguage) ?? .system

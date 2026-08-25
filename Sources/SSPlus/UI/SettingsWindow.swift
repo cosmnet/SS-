@@ -241,6 +241,9 @@ struct GeneralTab: View {
 struct OutputTab: View {
     @ObservedObject private var settings = SettingsStore.shared
     @ObservedObject private var pro = ProManager.shared
+    @ObservedObject private var auth = GoogleAuth.shared
+    @State private var driveError: String?
+    @State private var driveBusy = false
 
     var body: some View {
         ScrollView {
@@ -361,8 +364,120 @@ struct OutputTab: View {
                 } label: {
                     groupLabel(L("Video"), "record.circle")
                 }
+
+                GroupBox {
+                    driveSection
+                        .padding(.vertical, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } label: {
+                    groupLabel("Google Drive", "icloud.and.arrow.up")
+                }
             }
             .padding(16)
+        }
+    }
+
+    // MARK: Google Drive
+
+    @ViewBuilder
+    private var driveSection: some View {
+        if !auth.isConfigured {
+            caption(L("Bu derlemede Google istemci kimliği yok (Resources/GoogleOAuth.plist). Kurulum için README'ye bak."))
+        } else if !auth.isSignedIn {
+            VStack(alignment: .leading, spacing: 10) {
+                caption(L("Kendi Google hesabınla oturum açarsın; belirteçler yalnızca bu Mac'in Anahtar Zinciri'nde tutulur, SS+ geliştiricisinin Drive'ına erişimi olmaz."))
+                HStack {
+                    Button(L("Google ile oturum aç")) { signInToGoogle() }
+                        .disabled(auth.isSigningIn)
+                    if auth.isSigningIn {
+                        ProgressView().controlSize(.small)
+                        caption(L("Tarayıcıda Google onayı bekleniyor…"))
+                    }
+                }
+                if let driveError {
+                    Label(driveError, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Image(systemName: "person.crop.circle.fill.badge.checkmark")
+                        .foregroundStyle(.green)
+                    Text(auth.accountEmail ?? "")
+                        .font(.system(size: 12, weight: .medium))
+                    Spacer()
+                    Button(L("Çıkış yap")) {
+                        Task { await auth.signOut() }
+                    }
+                    .controlSize(.small)
+                }
+
+                Toggle(L("Ekran görüntülerini Drive'a yükle"), isOn: $settings.driveUploadEnabled)
+                    .toggleStyle(.switch)
+
+                HStack {
+                    caption(L("Klasör"))
+                    TextField("SS+", text: $settings.driveFolderName)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 12))
+                        .frame(maxWidth: 180)
+                        .onSubmit { renameDriveFolder() }
+                    Button(L("Drive'da aç")) { openDriveFolder() }
+                        .controlSize(.small)
+                        .disabled(driveBusy)
+                }
+                caption(L("Klasör Drive'ının kökünde oluşturulur; sonra Drive'da istediğin yere taşıyabilir ya da adını değiştirebilirsin — yüklemeler onu izlemeye devam eder."))
+
+                Toggle(L("Bağlantıyla herkese açık paylaş"), isOn: $settings.driveShareAnyone)
+                    .toggleStyle(.switch)
+                Toggle(L("Linki panoya kopyala"), isOn: $settings.driveCopyLink)
+                    .toggleStyle(.switch)
+                    .disabled(!settings.driveShareAnyone)
+
+                if let driveError {
+                    Label(driveError, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+    }
+
+    private func signInToGoogle() {
+        driveError = nil
+        Task {
+            do {
+                try await auth.signIn()
+                settings.driveUploadEnabled = true
+                try await DriveUploadCoordinator.shared.ensureFolder()
+            } catch GoogleAuthError.cancelled {
+                // sessiz
+            } catch {
+                driveError = error.localizedDescription
+            }
+        }
+    }
+
+    private func renameDriveFolder() {
+        driveError = nil
+        Task {
+            do { try await DriveUploadCoordinator.shared.renameFolder() } catch { driveError = error.localizedDescription }
+        }
+    }
+
+    private func openDriveFolder() {
+        driveError = nil
+        driveBusy = true
+        Task {
+            defer { driveBusy = false }
+            do {
+                try await DriveUploadCoordinator.shared.ensureFolder()
+                if let url = DriveUploadCoordinator.shared.folderURL { NSWorkspace.shared.open(url) }
+            } catch {
+                driveError = error.localizedDescription
+            }
         }
     }
 }

@@ -14,6 +14,16 @@ final class PreviewModel: ObservableObject {
     @Published var item: PreviewItem?
     /// Anlık geri bildirim ("Kopyalandı" gibi)
     @Published var status: String?
+    /// Google Drive yükleme durumu (yalnızca görüntü kartı)
+    @Published var upload: DriveUploadState?
+
+    var currentURL: URL? {
+        switch item {
+        case let .image(_, url, _, _)?: return url
+        case let .video(url)?: return url
+        case nil: return nil
+        }
+    }
 }
 
 // MARK: - Denetleyici
@@ -47,6 +57,7 @@ final class PreviewPanelController {
         close()
         model.item = item
         model.status = note
+        model.upload = nil
 
         let size = contentSize(for: item)
         let margin: CGFloat = 16
@@ -185,6 +196,37 @@ final class PreviewPanelController {
         }, completionHandler: {
             panel.orderOut(nil)
         })
+    }
+
+    // MARK: - Drive yükleme durumu
+
+    /// Yalnızca kart hâlâ o dosyayı gösteriyorsa uygulanır; yükleme sürerken
+    /// kart kendiliğinden kapanmaz.
+    func setUploadState(_ state: DriveUploadState, for url: URL) {
+        guard model.currentURL == url else { return }
+        withAnimation(.easeOut(duration: 0.15)) {
+            model.upload = state
+        }
+        switch state {
+        case .uploading:
+            pauseDismiss()
+        case .done, .failed:
+            resumeDismiss()
+        }
+    }
+
+    func copyDriveLink() {
+        guard case let .done(link)? = model.upload else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(link.absoluteString, forType: .string)
+        ClipboardStore.shared.markOwnChange(pasteboard.changeCount)
+        flash(L("Drive linki kopyalandı"))
+    }
+
+    func openDriveLink() {
+        guard case let .done(link)? = model.upload else { return }
+        NSWorkspace.shared.open(link)
     }
 
     // MARK: - İşlemler
@@ -337,8 +379,8 @@ struct PreviewCardView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
-            // Durum bildirimi ("Kopyalandı" gibi)
-            if let status = model.status {
+            // Durum bildirimi ("Kopyalandı" gibi) ya da Drive yükleme durumu
+            if let status = model.status ?? uploadStatusText {
                 VStack {
                     Text(status)
                         .font(.system(size: 10.5, weight: .semibold))
@@ -367,10 +409,27 @@ struct PreviewCardView: View {
         }
     }
 
+    /// Drive yükleme durumunun kart üstündeki metni.
+    private var uploadStatusText: String? {
+        switch model.upload {
+        case .uploading?: return L("Drive'a yükleniyor…")
+        case .done?:
+            return SettingsStore.shared.driveShareAnyone && SettingsStore.shared.driveCopyLink
+                ? L("Drive linki kopyalandı")
+                : L("Drive'a yüklendi")
+        case .failed?: return L("Drive yüklemesi başarısız")
+        case nil: return nil
+        }
+    }
+
     private var chipRow: some View {
         HStack(spacing: 2) {
             chip(icon: "pencil.tip.crop.circle", label: L("Düzenle")) { controller?.editCurrentImage() }
             chip(icon: "doc.on.doc", label: L("Kopyala")) { controller?.copy() }
+            if case .done? = model.upload {
+                chip(icon: "link", label: L("Drive linkini kopyala")) { controller?.copyDriveLink() }
+                chip(icon: "arrow.up.right.square", label: L("Google Drive'da aç")) { controller?.openDriveLink() }
+            }
             if ProManager.shared.isPro {
                 chip(icon: "text.viewfinder", label: "OCR") { controller?.runOCR() }
             } else {

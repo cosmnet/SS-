@@ -16,7 +16,6 @@ final class ProManager: ObservableObject {
         ("speaker.wave.2.fill", L("Sistem Sesi"), L("Video kaydına sistem sesini dahil et")),
         ("film", L("HEVC ve özel bit hızı"), L("Daha küçük dosya, daha yüksek kalite")),
         ("scroll", L("Kaydırmalı Yakalama"), L("Uzun sayfaları tek görüntüde birleştir (yakında)")),
-        ("icloud.and.arrow.up", L("Anında Paylaşım Linki"), L("Yakaladığını buluta yükle, linki paylaş (yakında)")),
     ]}
 
     /// Pro'yu açan kodlar. Karşılaştırma büyük/küçük harf ve boşluk duyarsızdır.

@@ -1,6 +1,6 @@
 # SS+
 
-macOS için hafif, hızlı ve tamamen yerel çalışan bir ekran yakalama uygulaması.
+macOS için hafif ve hızlı bir ekran yakalama uygulaması. Google Drive yüklemesini açmadığın sürece hiçbir veri dışarı gönderilmez.
 Menü çubuğunda yaşar, ekranın üst ortasında **island** (dinamik ada) arayüzüyle açılır ve
 yakaladığın her şeyi sağ alt köşede küçük bir önizleme kartı olarak sunar.
 
@@ -26,6 +26,9 @@ Swift + SwiftUI + ScreenCaptureKit ile yazılmıştır. Harici bağımlılık yo
   Varsayılan olarak **kapalıdır**; açıldığında kopyalananlar
   `~/Library/Application Support/SSPlus/Clipboard` altına yazılır. Şifre yöneticilerinin gizli
   işaretlediği içerik hiçbir zaman kaydedilmez; "Çıkışta geçmişi sil" seçeneği vardır.
+- **Google Drive (isteğe bağlı)** — Kendi Google hesabınla oturum aç; ekran görüntüleri Drive'da
+  SS+'ın oluşturduğu klasöre yüklenir (klasörü sonra istediğin yere taşıyabilirsin), istersen
+  "bağlantıya sahip herkes" ile paylaşılıp linki panoya kopyalanır. Ayrıntılar aşağıda.
 - **Pro (demo)**
   - **Metin Kopyala (OCR)** — Görüntüdeki yazıyı Vision ile tanıyıp panoya alır
   - **60 FPS** video kaydı
@@ -81,6 +84,31 @@ Dağıtıma hazır DMG üretmek için:
 ```sh
 ./make_release.sh 1.0.0
 ```
+
+---
+
+## Google Drive kurulumu (geliştirici, bir kez)
+
+Drive yüklemesi Google'ın OAuth istemcisi ister. Bu yalnızca uygulamanın *kimliğidir*: her
+kullanıcı kendi hesabıyla oturum açar, belirteçler kendi Mac'inin Anahtar Zinciri'nde kalır ve
+geliştiricinin kimsenin Drive'ına erişimi olmaz. Kapsam en dar olanıdır (`drive.file`: yalnızca
+SS+'ın oluşturduğu dosya ve klasörler); Google doğrulaması gerektirmez.
+
+1. <https://console.cloud.google.com> → yeni proje (örn. "SS+").
+2. **APIs & Services → Library** → **Google Drive API** → Enable.
+3. **OAuth consent screen** → External → uygulama adı "SS+", destek e-postası;
+   **Scopes** → `https://www.googleapis.com/auth/drive.file` ekle;
+   **Audience** → Testing (kendi hesabını test kullanıcısı olarak ekle) ya da Publish.
+4. **Credentials → Create credentials → OAuth client ID → Desktop app** → Client ID ve Client
+   secret'ı kopyala.
+5. `Resources/GoogleOAuth.example.plist` dosyasını `Resources/GoogleOAuth.plist` olarak kopyala
+   ve iki değeri yaz. Dosya `.gitignore`'dadır; `build_app.sh` onu pakete ekler.
+   (`swift run` için: `SSPLUS_GOOGLE_CLIENT_ID` / `SSPLUS_GOOGLE_CLIENT_SECRET` ortam değişkenleri.)
+
+Kullanıcı tarafı: **Ayarlar → Kayıt & Çıktı → Google Drive → Google ile oturum aç**. Tarayıcıda
+onay verilir, SS+ Drive kökünde "SS+" klasörünü oluşturur. Sonraki her ekran görüntüsü oraya
+yüklenir; "Bağlantıyla herkese açık paylaş" açıksa link panoya kopyalanır ve önizleme kartında
+"Drive linkini kopyala / Google Drive'da aç" düğmeleri belirir.
 
 ---
 
@@ -149,6 +177,9 @@ Sources/SSPlus/
     ├── ClipboardHistory.swift  # Pano geçmişi (isteğe bağlı, son 10)
     ├── Notifications.swift     # Uygulama içi bildirim adları
     ├── UIShotExport.swift      # Pazarlama görselleri (--export-ui-shots)
+    ├── Localization.swift      # Türkçe/İngilizce sözlük (L("…"))
+    ├── GoogleAuth.swift        # Google OAuth (PKCE + loopback), Anahtar Zinciri
+    ├── GoogleDrive.swift       # Drive v3 istemcisi + yükleme koordinatörü
     ├── StrokeSmoothing.swift   # Fırça sabitleyici + Catmull-Rom
     ├── Permissions.swift       # Ekran kaydı izni + onarım
     ├── Pro.swift               # Pro bayrağı + OCR servisi

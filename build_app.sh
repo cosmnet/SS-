@@ -48,6 +48,15 @@ cp "$BIN" "${BUNDLE}/Contents/MacOS/SSPlus"
 chmod +x "${BUNDLE}/Contents/MacOS/SSPlus"
 cp "$ICON_SRC" "${BUNDLE}/Contents/Resources/SSPlus.icns"
 
+# Google Drive: geliştiricinin OAuth istemci kimliği (git'e girmez).
+if [[ -f "Resources/GoogleOAuth.plist" ]]; then
+  cp "Resources/GoogleOAuth.plist" "${BUNDLE}/Contents/Resources/GoogleOAuth.plist"
+  echo "  Google OAuth istemcisi pakete eklendi."
+else
+  echo "  ⚠︎ Resources/GoogleOAuth.plist yok; Google Drive yüklemesi bu derlemede kapalı olacak."
+  echo "     (Resources/GoogleOAuth.example.plist dosyasını kopyalayıp doldur.)"
+fi
+
 echo "  Sürüm ${VERSION} (${BUILD})"
 cat > "${BUNDLE}/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
