@@ -110,6 +110,10 @@ final class GoogleAuth: ObservableObject {
 
     private init() {
         tokens = TokenKeychain.load()
+        // Öğe başka bir imzayla (eski derleme) oluşturulmuşsa macOS bir kez
+        // Anahtar Zinciri onayı ister. Onaydan sonra öğeyi bu uygulamanın
+        // imzasıyla yeniden yaz: sonraki açılışlarda soru tekrarlanmaz.
+        if let tokens { TokenKeychain.save(tokens) }
     }
 
     // MARK: Oturum açma
