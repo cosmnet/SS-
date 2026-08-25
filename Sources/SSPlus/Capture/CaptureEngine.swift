@@ -10,11 +10,11 @@ enum CaptureError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .noDisplay: return "Ekran bulunamadı."
-        case .noWindow: return "Pencere bulunamadı."
-        case .permissionDenied: return "Ekran kaydı izni gerekiyor. Sistem Ayarları → Gizlilik ve Güvenlik → Ekran Kaydı bölümünden SS+ için izin verin."
-        case .encodeFailed: return "Görüntü kodlanamadı."
-        case .noFrames: return "Kayıt sırasında hiç kare alınamadı; dosya oluşturulmadı."
+        case .noDisplay: return L("Ekran bulunamadı.")
+        case .noWindow: return L("Pencere bulunamadı.")
+        case .permissionDenied: return L("Ekran kaydı izni gerekiyor. Sistem Ayarları → Gizlilik ve Güvenlik → Ekran Kaydı bölümünden SS+ için izin verin.")
+        case .encodeFailed: return L("Görüntü kodlanamadı.")
+        case .noFrames: return L("Kayıt sırasında hiç kare alınamadı; dosya oluşturulmadı.")
         }
     }
 }

@@ -3,15 +3,11 @@ import AppKit
 @MainActor
 enum OutputPipeline {
 
-    private static let nameFormatter: DateFormatter = {
+    static func fileName(prefix: String, ext: String) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")   // yerel rakam sistemlerinden bağımsız
-        formatter.dateFormat = "yyyy-MM-dd 'saat' HH.mm.ss"
-        return formatter
-    }()
-
-    static func fileName(prefix: String, ext: String) -> String {
-        "\(prefix) \(nameFormatter.string(from: Date())).\(ext)"
+        formatter.dateFormat = "yyyy-MM-dd '\(L("saat"))' HH.mm.ss"
+        return "\(prefix) \(formatter.string(from: Date())).\(ext)"
     }
 
     /// Aynı saniyede ikinci yakalama öncekinin üstüne yazmasın: " 2", " 3"… eklenir.

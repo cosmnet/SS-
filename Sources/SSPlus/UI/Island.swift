@@ -599,16 +599,16 @@ struct IslandView: View {
 
     private var toolRow: some View {
         HStack(spacing: 8) {
-            IslandToolButton(icon: "rectangle.dashed", title: "Alan", shortcut: settings.captureHotkey.display) {
+            IslandToolButton(icon: "rectangle.dashed", title: L("Alan"), shortcut: settings.captureHotkey.display) {
                 AppState.shared.beginCapture(.rect)
             }
-            IslandToolButton(icon: "macwindow", title: "Pencere", shortcut: "W") {
+            IslandToolButton(icon: "macwindow", title: L("Pencere"), shortcut: "W") {
                 AppState.shared.beginCapture(.window)
             }
-            IslandToolButton(icon: "display", title: "Ekran", shortcut: "↩") {
+            IslandToolButton(icon: "display", title: L("Ekran"), shortcut: "↩") {
                 AppState.shared.captureFullScreen()
             }
-            IslandToolButton(icon: "record.circle", title: "Kayıt", shortcut: settings.recordHotkey.display, tint: .red) {
+            IslandToolButton(icon: "record.circle", title: L("Kayıt"), shortcut: settings.recordHotkey.display, tint: .red) {
                 AppState.shared.beginRecordingSelection()
             }
         }
@@ -638,7 +638,7 @@ struct IslandView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Ayarlar")
+        .help(L("Ayarlar"))
     }
 
     /// Kayıt sırasında ekrana çizim katmanını aç/kapat.
@@ -654,7 +654,7 @@ struct IslandView: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .help("Kayıt sırasında çiz")
+        .help(L("Kayıt sırasında çiz"))
     }
 
     private func stopButton(compact: Bool) -> some View {
@@ -664,7 +664,7 @@ struct IslandView: View {
             HStack(spacing: 5) {
                 Image(systemName: "stop.fill")
                     .font(.system(size: compact ? 9 : 10, weight: .bold))
-                Text("Durdur")
+                Text(L("Durdur"))
                     .font(.system(size: compact ? 11 : 12, weight: .semibold))
             }
             .padding(.horizontal, compact ? 10 : 12)
@@ -674,7 +674,7 @@ struct IslandView: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .help("Kaydı durdur")
+        .help(L("Kaydı durdur"))
     }
 
     // MARK: Seçim satırı
@@ -682,10 +682,10 @@ struct IslandView: View {
     private func selectingRow(mode: SelectionMode, style: SelectionStyle) -> some View {
         HStack(spacing: 10) {
             if style == .recording {
-                Label("Kayıt alanı seç", systemImage: "record.circle")
+                Label(L("Kayıt alanı seç"), systemImage: "record.circle")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.red)
-                Text("↩ tüm ekran")
+                Text(L("↩ tüm ekran"))
                     .font(.system(size: 11))
                     .foregroundStyle(.white.opacity(0.5))
             } else {
@@ -693,11 +693,11 @@ struct IslandView: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white)
                 HStack(spacing: 6) {
-                    hudModeChip("R", "Alan", active: mode == .rect) { switchMode(.rect) }
-                    hudModeChip("W", "Pencere", active: mode == .window) { switchMode(.window) }
+                    hudModeChip("R", L("Alan"), active: mode == .rect) { switchMode(.rect) }
+                    hudModeChip("W", L("Pencere"), active: mode == .window) { switchMode(.window) }
                 }
             }
-            Text("Esc iptal")
+            Text(L("Esc iptal"))
                 .font(.system(size: 11))
                 .foregroundStyle(.white.opacity(0.4))
         }
@@ -745,7 +745,7 @@ struct ClipboardStripView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
-                Text("PANO")
+                Text(L("PANO"))
                     .font(.system(size: 8.5, weight: .bold, design: .rounded))
                     .tracking(1)
                     .foregroundStyle(.white.opacity(0.35))
@@ -754,19 +754,19 @@ struct ClipboardStripView: View {
                     Button {
                         store.clear()
                     } label: {
-                        Text("Temizle")
+                        Text(L("Temizle"))
                             .font(.system(size: 9, weight: .medium))
                             .foregroundStyle(.white.opacity(0.35))
                     }
                     .buttonStyle(.plain)
-                    .help("Pano geçmişini temizle")
+                    .help(L("Pano geçmişini temizle"))
                 }
             }
 
             if store.entries.isEmpty {
                 Text(settings.clipboardHistoryEnabled
-                     ? "Kopyaladıkların burada birikir"
-                     : "Pano geçmişi kapalı · Ayarlar → Genel'den aç")
+                     ? L("Kopyaladıkların burada birikir")
+                     : L("Pano geçmişi kapalı · Ayarlar → Genel'den aç"))
                     .font(.system(size: 10))
                     .foregroundStyle(.white.opacity(0.28))
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -809,7 +809,7 @@ struct ClipboardStripView: View {
             )
         }
         .buttonStyle(.plain)
-        .help(entry.kind == .text ? "Metni panoya geri kopyala" : "Görseli panoya geri kopyala")
+        .help(entry.kind == .text ? L("Metni panoya geri kopyala") : L("Görseli panoya geri kopyala"))
     }
 
     @ViewBuilder

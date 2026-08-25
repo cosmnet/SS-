@@ -135,7 +135,7 @@ final class AppState: ObservableObject {
         let settings = SettingsStore.shared
         let pro = ProManager.shared.isPro
         let ext = settings.videoFormat.lowercased() == "mp4" ? "mp4" : "mov"
-        let url = settings.saveFolder.appendingPathComponent(OutputPipeline.fileName(prefix: "SS+ Kayıt", ext: ext))
+        let url = settings.saveFolder.appendingPathComponent(OutputPipeline.fileName(prefix: L("SS+ Kayıt"), ext: ext))
         try? FileManager.default.createDirectory(at: settings.saveFolder, withIntermediateDirectories: true)
 
         let recorder = ScreenRecorder(url: url)
@@ -202,7 +202,7 @@ final class AppState: ObservableObject {
             let url = try await recorder.stop()
             OutputPipeline.deliverVideo(
                 url: url,
-                note: interruptedBy == nil ? nil : "Kayıt kesildi; buraya kadarki kısım kaydedildi"
+                note: interruptedBy == nil ? nil : L("Kayıt kesildi; buraya kadarki kısım kaydedildi")
             )
         } catch {
             presentError(error)
@@ -235,7 +235,7 @@ final class AppState: ObservableObject {
         alert.messageText = "SS+"
         alert.informativeText = error.localizedDescription
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Tamam")
+        alert.addButton(withTitle: L("Tamam"))
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()
     }

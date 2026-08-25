@@ -77,21 +77,21 @@ enum PermissionManager {
         defer { alertOnScreen = false }
 
         let alert = NSAlert()
-        alert.messageText = "SS+ için ekran kaydı izni gerekiyor"
-        alert.informativeText = """
+        alert.messageText = L("SS+ için ekran kaydı izni gerekiyor")
+        alert.informativeText = L("""
         Sistem Ayarları → Gizlilik ve Güvenlik → Ekran Kaydı listesinde SS+ \
         anahtarını AÇIK duruma getir, sonra uygulamayı TAMAMEN kapatıp yeniden aç. \
         macOS, verilen izni ancak uygulama yeniden başlatıldığında tanır.
 
         Anahtar açık görünmesine rağmen çalışmıyorsa kayıt bozuk demektir \
         (yeniden derleme sonrası imza değişimi buna yol açar). \
-        "İzni Onar ve Yeniden Başlat" eski kaydı silip uygulamayı yeniden \
+        L("İzni Onar ve Yeniden Başlat") eski kaydı silip uygulamayı yeniden \
         başlatır; macOS bu kez temiz bir izin penceresi gösterir.
-        """
+        """)
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "İzni Onar ve Yeniden Başlat")
-        alert.addButton(withTitle: "Sistem Ayarları'nı Aç")
-        alert.addButton(withTitle: "Vazgeç")
+        alert.addButton(withTitle: L("İzni Onar ve Yeniden Başlat"))
+        alert.addButton(withTitle: L("Sistem Ayarları'nı Aç"))
+        alert.addButton(withTitle: L("Vazgeç"))
 
         NSApp.activate(ignoringOtherApps: true)
         switch alert.runModal() {

@@ -213,7 +213,7 @@ final class PreviewPanelController {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.writeObjects([nsImage])
-        flash("Kopyalandı")
+        flash(L("Kopyalandı"))
     }
 
     func runOCR() {
@@ -225,9 +225,9 @@ final class PreviewPanelController {
                 let pasteboard = NSPasteboard.general
                 pasteboard.clearContents()
                 pasteboard.setString(text, forType: .string)
-                self.flash("Metin panoya kopyalandı")
+                self.flash(L("Metin panoya kopyalandı"))
             } else {
-                self.flash("Metin bulunamadı")
+                self.flash(L("Metin bulunamadı"))
             }
         }
     }
@@ -369,16 +369,16 @@ struct PreviewCardView: View {
 
     private var chipRow: some View {
         HStack(spacing: 2) {
-            chip(icon: "pencil.tip.crop.circle", label: "Düzenle") { controller?.editCurrentImage() }
-            chip(icon: "doc.on.doc", label: "Kopyala") { controller?.copy() }
+            chip(icon: "pencil.tip.crop.circle", label: L("Düzenle")) { controller?.editCurrentImage() }
+            chip(icon: "doc.on.doc", label: L("Kopyala")) { controller?.copy() }
             if ProManager.shared.isPro {
                 chip(icon: "text.viewfinder", label: "OCR") { controller?.runOCR() }
             } else {
                 proChip
             }
-            chip(icon: "folder", label: "Göster") { controller?.revealCurrent() }
-            chip(icon: "trash", label: "Sil", tint: .red) { controller?.deleteCurrent() }
-            chip(icon: "xmark", label: "Kapat") { controller?.close() }
+            chip(icon: "folder", label: L("Göster")) { controller?.revealCurrent() }
+            chip(icon: "trash", label: L("Sil"), tint: .red) { controller?.deleteCurrent() }
+            chip(icon: "xmark", label: L("Kapat")) { controller?.close() }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -399,7 +399,7 @@ struct PreviewCardView: View {
         .foregroundStyle(.white.opacity(0.3))
         .padding(.horizontal, 7)
         .padding(.vertical, 5)
-        .help("OCR yalnızca Pro'da — Ayarlar'dan aç")
+        .help(L("OCR yalnızca Pro'da — Ayarlar'dan aç"))
     }
 
     private func chip(icon: String, label: String, tint: Color = .white, action: @escaping () -> Void) -> some View {
@@ -431,7 +431,7 @@ struct PreviewCardView: View {
                     )
             }
             .buttonStyle(.plain)
-            .help("Videoyu aç")
+            .help(L("Videoyu aç"))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(url.lastPathComponent)
@@ -439,7 +439,7 @@ struct PreviewCardView: View {
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                Text(model.status ?? "Video kaydedildi")
+                Text(model.status ?? L("Video kaydedildi"))
                     .font(.system(size: 10.5))
                     .foregroundStyle(.white.opacity(0.55))
             }
@@ -447,9 +447,9 @@ struct PreviewCardView: View {
             Spacer(minLength: 4)
 
             HStack(spacing: 2) {
-                chip(icon: "folder", label: "Finder'da göster") { controller?.revealCurrent() }
-                chip(icon: "trash", label: "Sil", tint: .red) { controller?.deleteCurrent() }
-                chip(icon: "xmark", label: "Kapat") { controller?.close() }
+                chip(icon: "folder", label: L("Finder'da göster")) { controller?.revealCurrent() }
+                chip(icon: "trash", label: L("Sil"), tint: .red) { controller?.deleteCurrent() }
+                chip(icon: "xmark", label: L("Kapat")) { controller?.close() }
             }
         }
         .padding(.horizontal, 12)

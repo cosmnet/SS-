@@ -10,14 +10,14 @@ final class ProManager: ObservableObject {
         didSet { UserDefaults.standard.set(isPro, forKey: "isPro") }
     }
 
-    static let features: [(icon: String, title: String, detail: String)] = [
-        ("text.viewfinder", "Metin Kopyala (OCR)", "Ekran görüntüsündeki yazıyı tek tıkla panoya al"),
-        ("speedometer", "60 FPS Video", "Akıcı, yüksek kare hızında ekran kaydı"),
-        ("speaker.wave.2.fill", "Sistem Sesi", "Video kaydına sistem sesini dahil et"),
-        ("film", "HEVC ve özel bit hızı", "Daha küçük dosya, daha yüksek kalite"),
-        ("scroll", "Kaydırmalı Yakalama", "Uzun sayfaları tek görüntüde birleştir (yakında)"),
-        ("icloud.and.arrow.up", "Anında Paylaşım Linki", "Yakaladığını buluta yükle, linki paylaş (yakında)"),
-    ]
+    static var features: [(icon: String, title: String, detail: String)] {[
+        ("text.viewfinder", L("Metin Kopyala (OCR)"), L("Ekran görüntüsündeki yazıyı tek tıkla panoya al")),
+        ("speedometer", L("60 FPS Video"), L("Akıcı, yüksek kare hızında ekran kaydı")),
+        ("speaker.wave.2.fill", L("Sistem Sesi"), L("Video kaydına sistem sesini dahil et")),
+        ("film", L("HEVC ve özel bit hızı"), L("Daha küçük dosya, daha yüksek kalite")),
+        ("scroll", L("Kaydırmalı Yakalama"), L("Uzun sayfaları tek görüntüde birleştir (yakında)")),
+        ("icloud.and.arrow.up", L("Anında Paylaşım Linki"), L("Yakaladığını buluta yükle, linki paylaş (yakında)")),
+    ]}
 
     /// Pro'yu açan kodlar. Karşılaştırma büyük/küçük harf ve boşluk duyarsızdır.
     private static let validCodes: Set<String> = ["cefri"]

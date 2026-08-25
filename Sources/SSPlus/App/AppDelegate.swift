@@ -98,7 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var problems: [String] = []
 
         if capture == record {
-            problems.append("Yakalama ve kayıt kısayolları aynı (\(capture.display)); yalnızca biri çalışır.")
+            problems.append(L("Yakalama ve kayıt kısayolları aynı (%@); yalnızca biri çalışır.", capture.display))
         }
 
         if let char = capture.character.first {
@@ -107,7 +107,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     AppState.shared.beginCapture(SelectionMode(rawValue: SettingsStore.shared.lastModeRaw) ?? .rect)
                 }
             }
-            if !ok { problems.append("Yakalama kısayolu (\(capture.display)) sisteme kaydedilemedi.") }
+            if !ok { problems.append(L("Yakalama kısayolu (%@) sisteme kaydedilemedi.", capture.display)) }
         }
         if let char = record.character.first {
             let ok = HotKeyManager.shared.registerForCharacter(char, modifiers: record.carbonModifiers, id: 2) {
@@ -115,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     AppState.shared.toggleRecording()
                 }
             }
-            if !ok { problems.append("Kayıt kısayolu (\(record.display)) sisteme kaydedilemedi.") }
+            if !ok { problems.append(L("Kayıt kısayolu (%@) sisteme kaydedilemedi.", record.display)) }
         }
         AppState.shared.hotkeyWarning = problems.isEmpty ? nil : problems.joined(separator: "\n")
     }
@@ -150,30 +150,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let record = SettingsStore.shared.recordHotkey
         let recording = AppState.shared.isRecording
 
-        let captureItem = makeItem("Alan / Pencere Yakala", #selector(captureRect(_:)), key: capture.character.lowercased(), modifiers: capture.cocoaModifiers)
+        let captureItem = makeItem(L("Alan / Pencere Yakala"), #selector(captureRect(_:)), key: capture.character.lowercased(), modifiers: capture.cocoaModifiers)
         captureItem.isEnabled = !recording
         menu.addItem(captureItem)
         menu.addItem(.separator())
         for item in [
-            makeItem("Alan Seç", #selector(captureRect(_:)), key: ""),
-            makeItem("Pencere Seç", #selector(captureWindow(_:)), key: ""),
-            makeItem("Tüm Ekranı Yakala", #selector(captureFullScreen(_:)), key: ""),
+            makeItem(L("Alan Seç"), #selector(captureRect(_:)), key: ""),
+            makeItem(L("Pencere Seç"), #selector(captureWindow(_:)), key: ""),
+            makeItem(L("Tüm Ekranı Yakala"), #selector(captureFullScreen(_:)), key: ""),
         ] {
             item.isEnabled = !recording
             menu.addItem(item)
         }
         menu.addItem(.separator())
         menu.addItem(makeItem(
-            recording ? "Kaydı Durdur" : "Video Kaydı Başlat",
+            recording ? L("Kaydı Durdur") : L("Video Kaydı Başlat"),
             #selector(toggleRecording(_:)),
             key: record.character.lowercased(),
             modifiers: record.cocoaModifiers
         ))
         menu.addItem(.separator())
-        menu.addItem(makeItem("Kayıt Klasörünü Aç", #selector(openFolder(_:)), key: ""))
-        menu.addItem(makeItem("Ayarlar…", #selector(openSettings(_:)), key: ","))
+        menu.addItem(makeItem(L("Kayıt Klasörünü Aç"), #selector(openFolder(_:)), key: ""))
+        menu.addItem(makeItem(L("Ayarlar…"), #selector(openSettings(_:)), key: ","))
         menu.addItem(.separator())
-        menu.addItem(makeItem("SS+'ı Kapat", #selector(quitApp(_:)), key: "q"))
+        menu.addItem(makeItem(L("SS+'ı Kapat"), #selector(quitApp(_:)), key: "q"))
         return menu
     }
 

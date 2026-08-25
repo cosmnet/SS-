@@ -144,6 +144,13 @@ final class SettingsStore: ObservableObject {
     @Published var clearClipboardHistoryOnQuit: Bool {
         didSet { d.set(clearClipboardHistoryOnQuit, forKey: "clearClipboardHistoryOnQuit") }
     }
+    /// Arayüz dili: "system" | "tr" | "en"
+    @Published var languageRaw: String {
+        didSet {
+            d.set(languageRaw, forKey: "language")
+            Localization.preference = AppLanguage(rawValue: languageRaw) ?? .system
+        }
+    }
     /// Yakalama kısayolu (serileştirilmiş)
     @Published var captureHotkeyRaw: String {
         didSet { d.set(captureHotkeyRaw, forKey: "captureHotkeyRaw") }
@@ -153,6 +160,10 @@ final class SettingsStore: ObservableObject {
         didSet { d.set(recordHotkeyRaw, forKey: "recordHotkeyRaw") }
     }
 
+    var language: AppLanguage {
+        get { AppLanguage(rawValue: languageRaw) ?? .system }
+        set { languageRaw = newValue.rawValue }
+    }
     var captureHotkey: HotkeySetting {
         get { HotkeySetting(serialized: captureHotkeyRaw) ?? .defaultCapture }
         set { captureHotkeyRaw = newValue.serialized }
@@ -185,6 +196,9 @@ final class SettingsStore: ObservableObject {
         islandEnabled = d.object(forKey: "islandEnabled") as? Bool ?? true
         clipboardHistoryEnabled = d.object(forKey: "clipboardHistoryEnabled") as? Bool ?? false
         clearClipboardHistoryOnQuit = d.object(forKey: "clearClipboardHistoryOnQuit") as? Bool ?? false
+        let storedLanguage = d.string(forKey: "language") ?? "system"
+        languageRaw = storedLanguage
+        Localization.preference = AppLanguage(rawValue: storedLanguage) ?? .system
         captureHotkeyRaw = d.string(forKey: "captureHotkeyRaw") ?? HotkeySetting.defaultCapture.serialized
         recordHotkeyRaw = d.string(forKey: "recordHotkeyRaw") ?? HotkeySetting.defaultRecord.serialized
     }

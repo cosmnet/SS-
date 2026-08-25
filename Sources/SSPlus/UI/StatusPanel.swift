@@ -14,9 +14,9 @@ final class StatusPanelModel: ObservableObject {
 
         var title: String {
             switch self {
-            case .files: return "Dosyalar"
-            case .clipboardImages: return "Görseller"
-            case .clipboardTexts: return "Metinler"
+            case .files: return L("Dosyalar")
+            case .clipboardImages: return L("Görseller")
+            case .clipboardTexts: return L("Metinler")
             }
         }
     }
@@ -233,16 +233,16 @@ struct StatusPanelView: View {
 
     private var quickActions: some View {
         HStack(spacing: 6) {
-            quickAction(icon: "rectangle.dashed", title: "Alan", shortcut: settings.captureHotkey.display) {
+            quickAction(icon: "rectangle.dashed", title: L("Alan"), shortcut: settings.captureHotkey.display) {
                 AppState.shared.beginCapture(.rect)
             }
-            quickAction(icon: "macwindow", title: "Pencere") {
+            quickAction(icon: "macwindow", title: L("Pencere")) {
                 AppState.shared.beginCapture(.window)
             }
-            quickAction(icon: "display", title: "Ekran") {
+            quickAction(icon: "display", title: L("Ekran")) {
                 AppState.shared.captureFullScreen()
             }
-            quickAction(icon: "record.circle", title: "Kayıt", tint: .red, shortcut: settings.recordHotkey.display) {
+            quickAction(icon: "record.circle", title: L("Kayıt"), tint: .red, shortcut: settings.recordHotkey.display) {
                 AppState.shared.beginRecordingSelection()
             }
         }
@@ -315,7 +315,7 @@ struct StatusPanelView: View {
     private var filesList: some View {
         Group {
             if model.files.isEmpty {
-                emptyState(icon: "tray", text: "Henüz kayıt yok")
+                emptyState(icon: "tray", text: L("Henüz kayıt yok"))
             } else {
                 ScrollView {
                     LazyVStack(spacing: 2) {
@@ -353,7 +353,7 @@ struct StatusPanelView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .help("Finder'da göster")
+            .help(L("Finder'da göster"))
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
@@ -368,7 +368,7 @@ struct StatusPanelView: View {
         let images = clipboard.entries.filter { $0.kind == .image }
         return Group {
             if images.isEmpty {
-                emptyState(icon: "photo.on.rectangle.angled", text: settings.clipboardHistoryEnabled ? "Pano görsel geçmişi boş" : "Pano geçmişi kapalı · Ayarlar → Genel")
+                emptyState(icon: "photo.on.rectangle.angled", text: settings.clipboardHistoryEnabled ? L("Pano görsel geçmişi boş") : L("Pano geçmişi kapalı · Ayarlar → Genel"))
             } else {
                 ScrollView {
                     LazyVStack(spacing: 2) {
@@ -402,7 +402,7 @@ struct StatusPanelView: View {
                 }
             }
             VStack(alignment: .leading, spacing: 1.5) {
-                Text("Pano görseli")
+                Text(L("Pano görseli"))
                     .font(.system(size: 11.5, weight: .medium))
                 Text(RelativeDateTimeFormatter.localized.tr.string(for: entry.date) ?? "")
                     .font(.system(size: 9.5))
@@ -423,14 +423,14 @@ struct StatusPanelView: View {
             clipboard.recopy(entry)
             model.confirmCopy(entry.id)
         }
-        .help("Panoya geri kopyala")
+        .help(L("Panoya geri kopyala"))
     }
 
     private var clipboardTextsList: some View {
         let texts = clipboard.entries.filter { $0.kind == .text }
         return Group {
             if texts.isEmpty {
-                emptyState(icon: "text.quote", text: settings.clipboardHistoryEnabled ? "Pano metin geçmişi boş" : "Pano geçmişi kapalı · Ayarlar → Genel")
+                emptyState(icon: "text.quote", text: settings.clipboardHistoryEnabled ? L("Pano metin geçmişi boş") : L("Pano geçmişi kapalı · Ayarlar → Genel"))
             } else {
                 ScrollView {
                     LazyVStack(spacing: 2) {
@@ -475,7 +475,7 @@ struct StatusPanelView: View {
             clipboard.recopy(entry)
             model.confirmCopy(entry.id)
         }
-        .help("Panoya geri kopyala")
+        .help(L("Panoya geri kopyala"))
     }
 
     private func emptyState(icon: String, text: String) -> some View {
@@ -494,14 +494,14 @@ struct StatusPanelView: View {
 
     private var footer: some View {
         HStack(spacing: 4) {
-            footerButton(icon: "gearshape", label: "Ayarlar") {
+            footerButton(icon: "gearshape", label: L("Ayarlar")) {
                 SettingsWindowController.shared.show()
             }
-            footerButton(icon: "arrow.clockwise", label: "Listeyi yenile") {
+            footerButton(icon: "arrow.clockwise", label: L("Listeyi yenile")) {
                 model.refreshFiles()
             }
             Spacer()
-            footerButton(icon: "power", label: "Çıkış") {
+            footerButton(icon: "power", label: L("Çıkış")) {
                 NSApplication.shared.terminate(nil)
             }
         }
@@ -574,10 +574,11 @@ struct FileThumbnailView: View {
 // MARK: - Göreli tarih
 
 private extension RelativeDateTimeFormatter {
+    private static let cache = RelativeDateTimeFormatter()
     static var localized: RelativeDateTimeFormatter {
-        let formatter = RelativeDateTimeFormatter()
+        let formatter = cache
         formatter.unitsStyle = .abbreviated
-        formatter.locale = Locale(identifier: "tr_TR")
+        formatter.locale = Localization.locale
         return formatter
     }
 

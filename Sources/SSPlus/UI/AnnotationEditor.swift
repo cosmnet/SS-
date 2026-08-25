@@ -11,13 +11,13 @@ enum AnnotationTool: Int, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .pen: return "Kalem"
-        case .highlighter: return "Fosforlu"
-        case .arrow: return "Ok"
-        case .line: return "Çizgi"
-        case .rect: return "Dikdörtgen"
-        case .ellipse: return "Elips"
-        case .text: return "Metin"
+        case .pen: return L("Kalem")
+        case .highlighter: return L("Fosforlu")
+        case .arrow: return L("Ok")
+        case .line: return L("Çizgi")
+        case .rect: return L("Dikdörtgen")
+        case .ellipse: return L("Elips")
+        case .text: return L("Metin")
         }
     }
 
@@ -82,16 +82,16 @@ struct AnnotationColorItem: Identifiable {
 }
 
 enum AnnotationPalette {
-    static let all: [AnnotationColorItem] = [
-        AnnotationColorItem(id: 0, title: "Beyaz", color: .white),
-        AnnotationColorItem(id: 1, title: "Siyah", color: .black),
-        AnnotationColorItem(id: 2, title: "Kırmızı", color: .systemRed),
-        AnnotationColorItem(id: 3, title: "Turuncu", color: .systemOrange),
-        AnnotationColorItem(id: 4, title: "Sarı", color: .systemYellow),
-        AnnotationColorItem(id: 5, title: "Yeşil", color: .systemGreen),
-        AnnotationColorItem(id: 6, title: "Mavi", color: .systemBlue),
-        AnnotationColorItem(id: 7, title: "Mor", color: .systemPurple),
-    ]
+    static var all: [AnnotationColorItem] {[
+        AnnotationColorItem(id: 0, title: L("Beyaz"), color: .white),
+        AnnotationColorItem(id: 1, title: L("Siyah"), color: .black),
+        AnnotationColorItem(id: 2, title: L("Kırmızı"), color: .systemRed),
+        AnnotationColorItem(id: 3, title: L("Turuncu"), color: .systemOrange),
+        AnnotationColorItem(id: 4, title: L("Sarı"), color: .systemYellow),
+        AnnotationColorItem(id: 5, title: L("Yeşil"), color: .systemGreen),
+        AnnotationColorItem(id: 6, title: L("Mavi"), color: .systemBlue),
+        AnnotationColorItem(id: 7, title: L("Mor"), color: .systemPurple),
+    ]}
 }
 
 // MARK: - Çizim modeli
@@ -461,14 +461,14 @@ struct AnnotationToolbarView: View {
             }
             separator
             HStack(spacing: 3) {
-                iconButton("arrow.uturn.backward", help: "Geri Al (⌘Z)", enabled: model.canUndo, action: actions.undo)
-                iconButton("arrow.uturn.forward", help: "Yinele (⇧⌘Z)", enabled: model.canRedo, action: actions.redo)
+                iconButton("arrow.uturn.backward", help: L("Geri Al (⌘Z)"), enabled: model.canUndo, action: actions.undo)
+                iconButton("arrow.uturn.forward", help: L("Yinele (⇧⌘Z)"), enabled: model.canRedo, action: actions.redo)
             }
             separator
             HStack(spacing: 6) {
                 primaryButton
-                textButton("Düz Aktar", help: "Çizimsiz orijinali aktar (Esc)", action: actions.plain)
-                textButton("Vazgeç", help: "Hiçbir şey kaydetme (⌘.)", tint: .red, action: actions.cancel)
+                textButton(L("Düz Aktar"), help: L("Çizimsiz orijinali aktar (Esc)"), action: actions.plain)
+                textButton(L("Vazgeç"), help: L("Hiçbir şey kaydetme (⌘.)"), tint: .red, action: actions.cancel)
             }
         }
         .padding(.horizontal, 12)
@@ -554,7 +554,7 @@ struct AnnotationToolbarView: View {
                 .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
         .buttonStyle(.plain)
-        .help("Kalınlık: \(value.title)")
+        .help("\(L("Kalınlık")): \(value.title)")
     }
 
     private func iconButton(_ icon: String, help: String, enabled: Bool, action: @escaping () -> Void) -> some View {
@@ -579,7 +579,7 @@ struct AnnotationToolbarView: View {
             HStack(spacing: 5) {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .bold))
-                Text("Bitti")
+                Text(L("Bitti"))
                     .font(.system(size: 12, weight: .semibold))
             }
             .foregroundStyle(Color.black)
@@ -592,7 +592,7 @@ struct AnnotationToolbarView: View {
             .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
         .buttonStyle(.plain)
-        .help("Çizimleri uygula ve aktar (Enter)")
+        .help(L("Çizimleri uygula ve aktar (Enter)"))
     }
 
     private func textButton(
@@ -884,7 +884,7 @@ final class AnnotationEditorController {
         field.isBezeled = false
         field.focusRingType = .none
         field.usesSingleLineMode = true
-        field.placeholderString = "Metin"
+        field.placeholderString = L("Metin")
         field.cell?.wraps = false
         field.cell?.isScrollable = true
 

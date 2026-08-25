@@ -10,20 +10,20 @@ enum DrawTool: Equatable {
 }
 
 enum DrawPalette {
-    static let colors: [(name: String, color: NSColor)] = [
-        ("Kırmızı", .systemRed),
-        ("Turuncu", .systemOrange),
-        ("Sarı", .systemYellow),
-        ("Yeşil", .systemGreen),
-        ("Mavi", .systemBlue),
-        ("Beyaz", .white),
-    ]
+    static var colors: [(name: String, color: NSColor)] {[
+        (L("Kırmızı"), .systemRed),
+        (L("Turuncu"), .systemOrange),
+        (L("Sarı"), .systemYellow),
+        (L("Yeşil"), .systemGreen),
+        (L("Mavi"), .systemBlue),
+        (L("Beyaz"), .white),
+    ]}
 
-    static let widths: [(label: String, name: String, value: CGFloat)] = [
-        ("S", "İnce", 3),
-        ("M", "Orta", 6),
-        ("L", "Kalın", 12),
-    ]
+    static var widths: [(label: String, name: String, value: CGFloat)] {[
+        ("S", L("İnce"), 3),
+        ("M", L("Orta"), 6),
+        ("L", L("Kalın"), 12),
+    ]}
 }
 
 /// Toolbar'ın seçili durumunu SwiftUI'ye yansıtan küçük model.
@@ -367,7 +367,7 @@ final class DrawCanvasView: NSView, NSTextFieldDelegate {
         field.textColor = strokeColor
         field.font = .systemFont(ofSize: textSize, weight: .semibold)
         field.focusRingType = .none
-        field.placeholderString = "Yaz ve ↩"
+        field.placeholderString = L("Yaz ve ↩")
         field.delegate = self
         field.target = self
         field.action = #selector(textFieldAction(_:))
@@ -448,10 +448,10 @@ struct DrawToolbarView: View {
             separator
             toolToggle
             separator
-            actionChip(icon: "trash", title: "Temizle", tooltip: "Tüm çizimleri sil") {
+            actionChip(icon: "trash", title: L("Temizle"), tooltip: L("Tüm çizimleri sil")) {
                 controller.clear()
             }
-            actionChip(icon: "xmark", title: "Kapat", tooltip: "Çizim katmanını kapat (Esc)") {
+            actionChip(icon: "xmark", title: L("Kapat"), tooltip: L("Çizim katmanını kapat (Esc)")) {
                 controller.close()
             }
         }
@@ -520,15 +520,15 @@ struct DrawToolbarView: View {
                         .foregroundStyle(.primary)
                 }
                 .buttonStyle(.plain)
-                .help("\(entry.name) kalınlık")
+                .help(L("%@ kalınlık", entry.name))
             }
         }
     }
 
     private var toolToggle: some View {
         HStack(spacing: 5) {
-            toolButton(.pen, icon: "pencil.tip", tooltip: "Kalem")
-            toolButton(.text, icon: "textformat", tooltip: "Metin — tıkla, yaz, ↩ ile bırak")
+            toolButton(.pen, icon: "pencil.tip", tooltip: L("Kalem"))
+            toolButton(.text, icon: "textformat", tooltip: L("Metin — tıkla, yaz, ↩ ile bırak"))
         }
     }
 

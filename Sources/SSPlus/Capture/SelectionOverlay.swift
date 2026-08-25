@@ -7,8 +7,8 @@ enum SelectionMode: String {
 
     var hint: String {
         switch self {
-        case .rect: return "Sürükleyerek alan seç  ·  ⇧ kare"
-        case .window: return "Yakalanacak pencereye tıkla"
+        case .rect: return L("Sürükleyerek alan seç  ·  ⇧ kare")
+        case .window: return L("Yakalanacak pencereye tıkla")
         }
     }
 }
