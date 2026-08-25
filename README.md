@@ -52,8 +52,8 @@ klasöründedir; `npx vercel deploy --prod --cwd site` ile yayımlanır.
 
 ## İndir ve kur
 
-En güncel sürümü [Releases](../../releases/latest) sayfasından `SS+-<sürüm>.dmg`
-olarak indirebilirsin (Apple Silicon + Intel, universal).
+En güncel sürümü <https://ssplus.vercel.app> adresinden `SSPlus-<sürüm>.dmg` olarak
+indirebilirsin (Apple Silicon).
 
 1. DMG'yi aç, **SS+** simgesini **Applications** klasörüne sürükle.
 2. **İlk açılış (bir kereye mahsus):** Uygulama Apple tarafından noterlenmediği için
