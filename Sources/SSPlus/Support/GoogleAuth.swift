@@ -385,7 +385,11 @@ private final class LoopbackServer: @unchecked Sendable {
         let state = items.first { $0.name == "state" }?.value
         let oauthError = items.first { $0.name == "error" }?.value
 
-        send(connection, status: "200 OK", body: Self.resultPage(success: code != nil))
+        // Tarayıcıyı web sitesindeki sonuç sayfasına yönlendir: adres çubuğunda
+        // 127.0.0.1 yerine ssplus-app.vercel.app görünür. (Yerel sayfa yalnızca
+        // yönlendirme izlenemezse yedek olarak durur.)
+        let target = (code != nil) ? SiteLinks.connected : SiteLinks.connectFailed
+        redirect(connection, to: target, fallback: Self.resultPage(success: code != nil))
 
         if let code, let state {
             finish(.success((code, state)))
@@ -440,11 +444,18 @@ private final class LoopbackServer: @unchecked Sendable {
             <h1>\(title)</h1>
             <p>\(detail)</p>
             <button onclick="window.close()">\(close)</button>
-            <div class="app"><a href="\(SiteLinks.home.absoluteString)">ssplus.vercel.app</a> · <a href="\(SiteLinks.privacy.absoluteString)">\(L("Gizlilik politikası"))</a></div>
+            <div class="app"><a href="\(SiteLinks.home.absoluteString)">ssplus-app.vercel.app</a> · <a href="\(SiteLinks.privacy.absoluteString)">\(L("Gizlilik politikası"))</a></div>
           </div>
           <script>setTimeout(function(){try{window.close()}catch(e){}},1500)</script>
         </body></html>
         """
+    }
+
+    private func redirect(_ connection: NWConnection, to url: URL, fallback: String) {
+        let response = "HTTP/1.1 302 Found\r\nLocation: \(url.absoluteString)\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(fallback.utf8.count)\r\nConnection: close\r\n\r\n" + fallback
+        connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in
+            connection.cancel()
+        })
     }
 
     private func send(_ connection: NWConnection, status: String, body: String) {

@@ -229,6 +229,9 @@ private final class LoginItem: ObservableObject {
 struct GeneralTab: View {
     @ObservedObject private var settings = SettingsStore.shared
     @ObservedObject private var login = LoginItem.shared
+    @ObservedObject private var auth = GoogleAuth.shared
+    @State private var driveError: String?
+    @State private var driveBusy = false
 
     var body: some View {
         SettingsSection(title: L("Genel"), icon: "gearshape") {
@@ -252,6 +255,10 @@ struct GeneralTab: View {
             if let error = login.error {
                 caption(error)
             }
+        }
+
+        SettingsSection(title: "Google Drive", icon: "icloud.and.arrow.up") {
+            driveSection
         }
 
         SettingsSection(title: L("Yakalama"), icon: "camera.viewfinder") {
@@ -278,21 +285,6 @@ struct GeneralTab: View {
                 Toggle(L("Ada'yı (Island) boşta göster"), isOn: $settings.islandEnabled)
                     .toggleStyle(.checkbox)
             }
-        }
-
-        SettingsSection(title: L("Pano geçmişi"), icon: "doc.on.clipboard") {
-            HStack(spacing: 16) {
-                Toggle(L("Pano geçmişini tut"), isOn: $settings.clipboardHistoryEnabled)
-                    .toggleStyle(.checkbox)
-                Toggle(L("Çıkışta geçmişi sil"), isOn: $settings.clearClipboardHistoryOnQuit)
-                    .toggleStyle(.checkbox)
-                    .disabled(!settings.clipboardHistoryEnabled)
-                Spacer()
-                Button(L("Geçmişi şimdi temizle")) { ClipboardStore.shared.clear() }
-                    .controlSize(.small)
-                    .disabled(!settings.clipboardHistoryEnabled)
-            }
-            caption(L("Son 10 kopya diske yazılır (~/Library/Application Support/SSPlus/Clipboard); gizli işaretli içerik kaydedilmez."))
         }
 
         SettingsSection(title: L("Hakkında"), icon: "person.crop.circle") {
@@ -322,115 +314,6 @@ struct GeneralTab: View {
                     .help(L("İzin sorunlarında ya da temiz kurulum için: macOS'taki SS+ izin kayıtlarını (Ekran Kaydı vb.) siler. İstersen ayarları ve Google oturumunu da kaldırıp uygulamayı Çöp'e taşır."))
             }
             .controlSize(.small)
-        }
-    }
-}
-
-// MARK: - Kayıt & Çıktı
-
-struct OutputTab: View {
-    @ObservedObject private var settings = SettingsStore.shared
-    @ObservedObject private var pro = ProManager.shared
-    @ObservedObject private var auth = GoogleAuth.shared
-    @State private var driveError: String?
-    @State private var driveBusy = false
-
-    var body: some View {
-        SettingsSection(title: L("Konum"), icon: "externaldrive") {
-            HStack(spacing: 8) {
-                fieldLabel(L("Klasör"))
-                TextField("", text: $settings.saveFolderPath)
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 12, design: .monospaced))
-                Button(L("Değiştir…")) {
-                    let panel = NSOpenPanel()
-                    panel.canChooseDirectories = true
-                    panel.canChooseFiles = false
-                    panel.allowsMultipleSelection = false
-                    if panel.runModal() == .OK, let url = panel.url {
-                        settings.saveFolderPath = url.path
-                    }
-                }
-                .controlSize(.small)
-            }
-        }
-
-        SettingsSection(title: L("Görüntü"), icon: "photo") {
-            HStack(spacing: 16) {
-                fieldLabel(L("Format"))
-                Picker("", selection: $settings.imageFormat) {
-                    ForEach(ImageFormat.allCases) { format in
-                        Text(format.title).tag(format)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 130)
-                Spacer()
-                Toggle(L("Görüntüleri panoya da kopyala"), isOn: $settings.copyToClipboard)
-                    .toggleStyle(.checkbox)
-            }
-            rowDivider()
-            HStack(spacing: 16) {
-                Toggle(L("İmleci dahil et"), isOn: $settings.showCursor)
-                    .toggleStyle(.checkbox)
-                Toggle(L("Akıllı pencere sezme"), isOn: $settings.smartWindowDetect)
-                    .toggleStyle(.checkbox)
-                    .help(L("Alan modunda fare pencere üstündeyken tıklamak o pencereyi yakalar."))
-                Spacer()
-            }
-        }
-
-        SettingsSection(title: L("Video"), icon: "record.circle") {
-            HStack(spacing: 14) {
-                fieldLabel(L("Kare hızı"))
-                FrameRateButton(fps: 30)
-                FrameRateButton(fps: 60)
-                if !pro.isPro { ProBadge() }
-                Spacer()
-                fieldLabel(L("Kap"))
-                Picker("", selection: $settings.videoFormat) {
-                    Text("MOV").tag("mov")
-                    Text("MP4").tag("mp4")
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 110)
-            }
-            rowDivider()
-            HStack(spacing: 14) {
-                fieldLabel(L("Kodek"))
-                Picker("", selection: $settings.videoCodec) {
-                    Text("H.264").tag("h264")
-                    Text("HEVC").tag("hevc")
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 130)
-                .disabled(!pro.isPro)
-                fieldLabel(L("Bit hızı"))
-                Picker("", selection: $settings.videoBitrateMbps) {
-                    Text(L("Otomatik")).tag(0)
-                    Text("8 Mb/s").tag(8)
-                    Text("16 Mb/s").tag(16)
-                    Text("32 Mb/s").tag(32)
-                }
-                .labelsHidden()
-                .frame(width: 110)
-                .disabled(!pro.isPro)
-                Spacer()
-                Toggle(L("Sistem sesini kaydet"), isOn: $settings.recordAudio)
-                    .toggleStyle(.checkbox)
-                    .disabled(!pro.isPro)
-                if !pro.isPro { ProBadge() }
-            }
-            if !pro.isPro {
-                caption(L("Pro olmadan kayıt 30 fps, H.264 ve otomatik bit hızıyla yapılır."))
-            }
-        }
-
-        SettingsSection(title: "Google Drive", icon: "icloud.and.arrow.up") {
-            driveSection
         }
     }
 
@@ -543,6 +426,125 @@ struct OutputTab: View {
             }
         }
     }
+}
+
+// MARK: - Kayıt & Çıktı
+
+struct OutputTab: View {
+    @ObservedObject private var settings = SettingsStore.shared
+    @ObservedObject private var pro = ProManager.shared
+
+    var body: some View {
+        SettingsSection(title: L("Konum"), icon: "externaldrive") {
+            HStack(spacing: 8) {
+                fieldLabel(L("Klasör"))
+                TextField("", text: $settings.saveFolderPath)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12, design: .monospaced))
+                Button(L("Değiştir…")) {
+                    let panel = NSOpenPanel()
+                    panel.canChooseDirectories = true
+                    panel.canChooseFiles = false
+                    panel.allowsMultipleSelection = false
+                    if panel.runModal() == .OK, let url = panel.url {
+                        settings.saveFolderPath = url.path
+                    }
+                }
+                .controlSize(.small)
+            }
+        }
+
+        SettingsSection(title: L("Görüntü"), icon: "photo") {
+            HStack(spacing: 16) {
+                fieldLabel(L("Format"))
+                Picker("", selection: $settings.imageFormat) {
+                    ForEach(ImageFormat.allCases) { format in
+                        Text(format.title).tag(format)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 130)
+                Spacer()
+                Toggle(L("Görüntüleri panoya da kopyala"), isOn: $settings.copyToClipboard)
+                    .toggleStyle(.checkbox)
+            }
+            rowDivider()
+            HStack(spacing: 16) {
+                Toggle(L("İmleci dahil et"), isOn: $settings.showCursor)
+                    .toggleStyle(.checkbox)
+                Toggle(L("Akıllı pencere sezme"), isOn: $settings.smartWindowDetect)
+                    .toggleStyle(.checkbox)
+                    .help(L("Alan modunda fare pencere üstündeyken tıklamak o pencereyi yakalar."))
+                Spacer()
+            }
+        }
+
+        SettingsSection(title: L("Video"), icon: "record.circle") {
+            HStack(spacing: 14) {
+                fieldLabel(L("Kare hızı"))
+                FrameRateButton(fps: 30)
+                FrameRateButton(fps: 60)
+                if !pro.isPro { ProBadge() }
+                Spacer()
+                fieldLabel(L("Kap"))
+                Picker("", selection: $settings.videoFormat) {
+                    Text("MOV").tag("mov")
+                    Text("MP4").tag("mp4")
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 110)
+            }
+            rowDivider()
+            HStack(spacing: 14) {
+                fieldLabel(L("Kodek"))
+                Picker("", selection: $settings.videoCodec) {
+                    Text("H.264").tag("h264")
+                    Text("HEVC").tag("hevc")
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 130)
+                .disabled(!pro.isPro)
+                fieldLabel(L("Bit hızı"))
+                Picker("", selection: $settings.videoBitrateMbps) {
+                    Text(L("Otomatik")).tag(0)
+                    Text("8 Mb/s").tag(8)
+                    Text("16 Mb/s").tag(16)
+                    Text("32 Mb/s").tag(32)
+                }
+                .labelsHidden()
+                .frame(width: 110)
+                .disabled(!pro.isPro)
+                Spacer()
+                Toggle(L("Sistem sesini kaydet"), isOn: $settings.recordAudio)
+                    .toggleStyle(.checkbox)
+                    .disabled(!pro.isPro)
+                if !pro.isPro { ProBadge() }
+            }
+            if !pro.isPro {
+                caption(L("Pro olmadan kayıt 30 fps, H.264 ve otomatik bit hızıyla yapılır."))
+            }
+        }
+
+        SettingsSection(title: L("Pano geçmişi"), icon: "doc.on.clipboard") {
+            HStack(spacing: 16) {
+                Toggle(L("Pano geçmişini tut"), isOn: $settings.clipboardHistoryEnabled)
+                    .toggleStyle(.checkbox)
+                Toggle(L("Çıkışta geçmişi sil"), isOn: $settings.clearClipboardHistoryOnQuit)
+                    .toggleStyle(.checkbox)
+                    .disabled(!settings.clipboardHistoryEnabled)
+                Spacer()
+                Button(L("Geçmişi şimdi temizle")) { ClipboardStore.shared.clear() }
+                    .controlSize(.small)
+                    .disabled(!settings.clipboardHistoryEnabled)
+            }
+            caption(L("Son 10 kopya diske yazılır (~/Library/Application Support/SSPlus/Clipboard); gizli işaretli içerik kaydedilmez."))
+        }
+
+    }
+
 }
 
 /// Kare hızı seçim düğmesi. 60 fps Pro'ya özeldir: seçilebilir gibi görünüp

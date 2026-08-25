@@ -1,7 +1,7 @@
 {
   "version": "1.4.0",
-  "build": 15,
-  "download": "https://ssplus.vercel.app/downloads/SSPlus-1.4.0.dmg",
-  "notes": "https://ssplus.vercel.app/changelog",
+  "build": 16,
+  "download": "https://ssplus-app.vercel.app/downloads/SSPlus-1.4.0.dmg",
+  "notes": "https://ssplus-app.vercel.app/changelog",
   "minimumOS": "14.0"
 }

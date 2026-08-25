@@ -42,8 +42,8 @@ Swift + SwiftUI + ScreenCaptureKit ile yazılmıştır. Harici bağımlılık yo
 
 ## Web sitesi
 
-<https://ssplus.vercel.app> — özellikler, [sürüm geçmişi](https://ssplus.vercel.app/changelog),
-[gizlilik politikası](https://ssplus.vercel.app/privacy) ve [kullanım koşulları](https://ssplus.vercel.app/terms).
+<https://ssplus-app.vercel.app> — özellikler, [sürüm geçmişi](https://ssplus-app.vercel.app/changelog),
+[gizlilik politikası](https://ssplus-app.vercel.app/privacy) ve [kullanım koşulları](https://ssplus-app.vercel.app/terms).
 Uygulama günde bir kez `version.json` dosyasını okuyarak yeni sürüm olup olmadığını denetler
 (Ayarlar → Genel → Hakkında'dan kapatılabilir ya da elle denetlenebilir). Site kaynağı `site/`
 klasöründedir; `npx vercel deploy --prod --cwd site` ile yayımlanır.
@@ -52,7 +52,7 @@ klasöründedir; `npx vercel deploy --prod --cwd site` ile yayımlanır.
 
 ## İndir ve kur
 
-En güncel sürümü <https://ssplus.vercel.app> adresinden `SSPlus-<sürüm>.dmg` olarak
+En güncel sürümü <https://ssplus-app.vercel.app> adresinden `SSPlus-<sürüm>.dmg` olarak
 indirebilirsin (Apple Silicon).
 
 1. DMG'yi aç, **SS+** simgesini **Applications** klasörüne sürükle.
