@@ -1,4 +1,5 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 // MARK: - Pencere denetleyicisi
@@ -24,7 +25,7 @@ final class SettingsWindowController {
         let window = NSWindow(contentViewController: hosting)
         window.title = L("SS+ Ayarları")
         window.styleMask = [.titled, .closable, .miniaturizable]
-        window.setContentSize(NSSize(width: 520, height: 560))
+        window.setContentSize(NSSize(width: 620, height: 560))
         window.center()
         window.isReleasedWhenClosed = false
         window.sharingType = .none   // kayıt sırasında açılırsa videoya girmesin
@@ -55,14 +56,6 @@ struct SettingsView: View {
         case pro = "Pro"
 
         var id: String { rawValue }
-        var icon: String {
-            switch self {
-            case .general: return "gearshape"
-            case .output: return "folder"
-            case .shortcuts: return "keyboard"
-            case .pro: return "star.fill"
-            }
-        }
     }
 
     @State private var selectedTab: Tab
@@ -73,47 +66,60 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Sekme çubuğu
-            HStack(spacing: 4) {
+            // Üstte yerel sekmeler
+            Picker("", selection: $selectedTab) {
                 ForEach(Tab.allCases) { tab in
-                    Button {
-                        withAnimation(.easeOut(duration: 0.15)) {
-                            selectedTab = tab
-                        }
-                    } label: {
-                        Label(L(tab.rawValue), systemImage: tab.icon)
-                            .font(.system(size: 12, weight: .medium))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 7)
-                            .background(
-                                Capsule()
-                                    .fill(selectedTab == tab ? Color.accentColor : Color.clear)
-                            )
-                            .foregroundStyle(selectedTab == tab ? .white : .secondary)
-                    }
-                    .buttonStyle(.plain)
+                    Text(L(tab.rawValue)).tag(tab)
                 }
-                Spacer()
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 440)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
 
             Divider()
 
-            Group {
-                switch selectedTab {
-                case .general: GeneralTab()
-                case .output: OutputTab()
-                case .shortcuts: ShortcutsTab()
-                case .pro: ProTab()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    switch selectedTab {
+                    case .general: GeneralTab()
+                    case .output: OutputTab()
+                    case .shortcuts: ShortcutsTab()
+                    case .pro: ProTab()
+                    }
                 }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }
 
 // MARK: - Ortak parçalar
+
+/// Başlık kutunun DIŞINDA (ikon + ad), içerik açık gri yuvarlatılmış panelde.
+private struct SettingsSection<Content: View>: View {
+    let title: String
+    let icon: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(title, systemImage: icon)
+                .font(.system(size: 12.5, weight: .semibold))
+                .padding(.leading, 2)
+            VStack(alignment: .leading, spacing: 9) {
+                content
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.primary.opacity(0.045)))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
+        }
+    }
+}
 
 /// Pro'ya özel bir denetimin yanına konan küçük rozet.
 private struct ProBadge: View {
@@ -131,122 +137,150 @@ private struct ProBadge: View {
     }
 }
 
-private func groupLabel(_ title: String, _ icon: String) -> some View {
-    Label(title, systemImage: icon)
-        .font(.system(size: 12, weight: .semibold))
-}
-
 private func caption(_ text: String) -> some View {
     Text(text)
-        .font(.caption)
+        .font(.system(size: 11))
         .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+}
+
+private func fieldLabel(_ text: String) -> some View {
+    Text(text + ":")
+        .font(.system(size: 13))
+}
+
+private func rowDivider() -> some View {
+    Divider().opacity(0.6)
+}
+
+private var appVersion: String {
+    let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
+    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+    return build.map { "\(short) (\($0))" } ?? short
+}
+
+// MARK: - Girişte başlat
+
+/// `SMAppService` ile oturum açılışında başlatma. Paketlenmemiş (`swift run`)
+/// çalışmada kayıt başarısız olur; anahtar o zaman devre dışı görünür.
+@MainActor
+private final class LoginItem: ObservableObject {
+    static let shared = LoginItem()
+    @Published var enabled: Bool
+    @Published var error: String?
+
+    private init() {
+        enabled = SMAppService.mainApp.status == .enabled
+    }
+
+    var available: Bool { Bundle.main.bundleURL.pathExtension == "app" }
+
+    func set(_ on: Bool) {
+        do {
+            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+            error = nil
+        } catch {
+            self.error = error.localizedDescription
+        }
+        enabled = SMAppService.mainApp.status == .enabled
+    }
 }
 
 // MARK: - Genel
 
 struct GeneralTab: View {
     @ObservedObject private var settings = SettingsStore.shared
+    @ObservedObject private var login = LoginItem.shared
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                GroupBox {
-                    VStack(alignment: .leading, spacing: 14) {
-                        Toggle(L("Yakalama sonrası düzenleyiciyi aç"), isOn: $settings.editAfterCapture)
-                            .toggleStyle(.switch)
-                        caption(L("Çekilen görüntü, bulunduğu yerin üstünde açılan çizim düzenleyicisine düşer."))
-                        Divider()
-                        Toggle(L("Önizleme kartını göster"), isOn: $settings.showPreview)
-                            .toggleStyle(.switch)
-                        if settings.showPreview {
-                            HStack {
-                                caption(L("Kaybolma süresi"))
-                                Slider(value: $settings.previewSeconds, in: 2...15, step: 1)
-                                    .controlSize(.small)
-                                Text(L("%d sn", Int(settings.previewSeconds)))
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 38, alignment: .trailing)
-                            }
-                        }
-                        Divider()
-                        Toggle(L("Kopyalama sesi çal"), isOn: $settings.playSound)
-                            .toggleStyle(.switch)
+        SettingsSection(title: L("Genel"), icon: "gearshape") {
+            HStack(spacing: 16) {
+                Toggle(L("Girişte başlat"), isOn: Binding(
+                    get: { login.enabled },
+                    set: { login.set($0) }
+                ))
+                .toggleStyle(.checkbox)
+                .disabled(!login.available)
+                Spacer()
+                fieldLabel(L("Dil"))
+                Picker("", selection: $settings.language) {
+                    ForEach(AppLanguage.allCases) { lang in
+                        Text(lang.title).tag(lang)
                     }
-                    .padding(.vertical, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } label: {
-                    groupLabel(L("Yakalama"), "camera.viewfinder")
                 }
+                .labelsHidden()
+                .frame(width: 150)
+            }
+            if let error = login.error {
+                caption(error)
+            }
+        }
 
-                GroupBox {
-                    VStack(alignment: .leading, spacing: 14) {
-                        Toggle(L("Pano geçmişini tut"), isOn: $settings.clipboardHistoryEnabled)
-                            .toggleStyle(.switch)
-                        caption(L("Açıkken kopyaladığın son 10 metin ve görsel adada ve menü panelinde listelenir. Bunlar diske yazılır: ~/Library/Application Support/SSPlus/Clipboard. Şifre yöneticilerinin gizli işaretlediği içerik hiçbir zaman kaydedilmez."))
-                        if settings.clipboardHistoryEnabled {
-                            Toggle(L("Çıkışta geçmişi sil"), isOn: $settings.clearClipboardHistoryOnQuit)
-                                .toggleStyle(.switch)
-                            HStack {
-                                Spacer()
-                                Button(L("Geçmişi şimdi temizle")) {
-                                    ClipboardStore.shared.clear()
-                                }
-                                .controlSize(.small)
-                            }
-                        }
+        SettingsSection(title: L("Yakalama"), icon: "camera.viewfinder") {
+            HStack(spacing: 16) {
+                Toggle(L("Yakalama sonrası düzenleyiciyi aç"), isOn: $settings.editAfterCapture)
+                    .toggleStyle(.checkbox)
+                Spacer()
+                Toggle(L("Kopyalama sesi çal"), isOn: $settings.playSound)
+                    .toggleStyle(.checkbox)
+            }
+            rowDivider()
+            HStack(spacing: 10) {
+                Toggle(L("Önizleme kartını göster"), isOn: $settings.showPreview)
+                    .toggleStyle(.checkbox)
+                Picker("", selection: $settings.previewSeconds) {
+                    ForEach([2.0, 3.0, 5.0, 8.0, 10.0, 15.0], id: \.self) { s in
+                        Text(L("%d sn", Int(s))).tag(s)
                     }
-                    .padding(.vertical, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } label: {
-                    groupLabel(L("Pano geçmişi"), "doc.on.clipboard")
                 }
+                .labelsHidden()
+                .frame(width: 90)
+                .disabled(!settings.showPreview)
+                Spacer()
+                Toggle(L("Ada'yı (Island) boşta göster"), isOn: $settings.islandEnabled)
+                    .toggleStyle(.checkbox)
+            }
+        }
 
-                GroupBox {
-                    VStack(alignment: .leading, spacing: 14) {
-                        Toggle(L("Ada'yı (Island) boşta göster"), isOn: $settings.islandEnabled)
-                            .toggleStyle(.switch)
-                        caption(L("Kapatılırsa ada yalnızca kayıt ve seçim sırasında görünür; çentik tamamen sessiz kalır."))
-                    }
-                    .padding(.vertical, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } label: {
-                    groupLabel(L("Ada (Island)"), "rectangle.topthird.inset.filled")
+        SettingsSection(title: L("Pano geçmişi"), icon: "doc.on.clipboard") {
+            HStack(spacing: 16) {
+                Toggle(L("Pano geçmişini tut"), isOn: $settings.clipboardHistoryEnabled)
+                    .toggleStyle(.checkbox)
+                Toggle(L("Çıkışta geçmişi sil"), isOn: $settings.clearClipboardHistoryOnQuit)
+                    .toggleStyle(.checkbox)
+                    .disabled(!settings.clipboardHistoryEnabled)
+                Spacer()
+                Button(L("Geçmişi şimdi temizle")) { ClipboardStore.shared.clear() }
+                    .controlSize(.small)
+                    .disabled(!settings.clipboardHistoryEnabled)
+            }
+            caption(L("Açıkken kopyaladığın son 10 metin ve görsel adada ve menü panelinde listelenir. Bunlar diske yazılır: ~/Library/Application Support/SSPlus/Clipboard. Şifre yöneticilerinin gizli işaretlediği içerik hiçbir zaman kaydedilmez."))
+        }
+
+        SettingsSection(title: L("Hakkında"), icon: "person.crop.circle") {
+            HStack(alignment: .center, spacing: 22) {
+                VStack(spacing: 6) {
+                    SSPlusLogoView(size: 72)
+                    Text("SS+")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                    Text(appVersion)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
                 }
-
-                GroupBox {
-                    VStack(alignment: .leading, spacing: 10) {
-                        caption(L("İzin sorunlarında ya da temiz kurulum için: macOS'taki SS+ izin kayıtlarını (Ekran Kaydı vb.) siler. İstersen ayarları ve Google oturumunu da kaldırıp uygulamayı Çöp'e taşır."))
-                        HStack {
-                            Spacer()
-                            Button(L("Kaldır / İzinleri sıfırla…")) { Uninstaller.present() }
-                                .controlSize(.small)
+                .frame(width: 120)
+                VStack(alignment: .leading, spacing: 10) {
+                    caption(L("macOS için hafif ekran yakalama: ada arayüzü, yerinde düzenleme, video kaydı ve isteğe bağlı Google Drive paylaşımı."))
+                    HStack(spacing: 8) {
+                        Button(L("Kaynak kodu (GitHub)")) {
+                            NSWorkspace.shared.open(URL(string: "https://github.com/cosmnet/SS-")!)
                         }
+                        Button(L("Kaldır / İzinleri sıfırla…")) { Uninstaller.present() }
                     }
-                    .padding(.vertical, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } label: {
-                    groupLabel(L("Bakım"), "wrench.and.screwdriver")
-                }
-
-                GroupBox {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Picker("", selection: $settings.language) {
-                            ForEach(AppLanguage.allCases) { lang in
-                                Text(lang.title).tag(lang)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        caption(L("Arayüz dili değişikliği anında uygulanır."))
-                    }
-                    .padding(.vertical, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } label: {
-                    groupLabel(L("Dil"), "globe")
+                    .controlSize(.small)
+                    caption(L("İzin sorunlarında ya da temiz kurulum için: macOS'taki SS+ izin kayıtlarını (Ekran Kaydı vb.) siler. İstersen ayarları ve Google oturumunu da kaldırıp uygulamayı Çöp'e taşır."))
                 }
             }
-            .padding(16)
+            .padding(.vertical, 4)
         }
     }
 }
@@ -261,134 +295,101 @@ struct OutputTab: View {
     @State private var driveBusy = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                GroupBox {
-                    VStack(alignment: .leading, spacing: 14) {
-                        HStack {
-                            Image(systemName: "folder.fill")
-                                .foregroundStyle(.secondary)
-                            TextField("", text: $settings.saveFolderPath)
-                                .textFieldStyle(.roundedBorder)
-                                .font(.system(size: 12, design: .monospaced))
-                            Button(L("Değiştir…")) {
-                                let panel = NSOpenPanel()
-                                panel.canChooseDirectories = true
-                                panel.canChooseFiles = false
-                                panel.allowsMultipleSelection = false
-                                if panel.runModal() == .OK, let url = panel.url {
-                                    settings.saveFolderPath = url.path
-                                }
-                            }
-                            .controlSize(.small)
-                        }
-                        Toggle(L("Görüntüleri panoya da kopyala"), isOn: $settings.copyToClipboard)
-                            .toggleStyle(.switch)
+        SettingsSection(title: L("Konum"), icon: "externaldrive") {
+            HStack(spacing: 8) {
+                fieldLabel(L("Klasör"))
+                TextField("", text: $settings.saveFolderPath)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12, design: .monospaced))
+                Button(L("Değiştir…")) {
+                    let panel = NSOpenPanel()
+                    panel.canChooseDirectories = true
+                    panel.canChooseFiles = false
+                    panel.allowsMultipleSelection = false
+                    if panel.runModal() == .OK, let url = panel.url {
+                        settings.saveFolderPath = url.path
                     }
-                    .padding(.vertical, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } label: {
-                    groupLabel(L("Konum"), "externaldrive")
                 }
-
-                GroupBox {
-                    VStack(alignment: .leading, spacing: 14) {
-                        Picker(L("Görüntü formatı"), selection: $settings.imageFormat) {
-                            ForEach(ImageFormat.allCases) { format in
-                                Text(format.title).tag(format)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-
-                        Toggle(L("İmleci ekran görüntüsüne ve videoya dahil et"), isOn: $settings.showCursor)
-                            .toggleStyle(.switch)
-
-                        Toggle(L("Akıllı pencere sezme"), isOn: $settings.smartWindowDetect)
-                            .toggleStyle(.switch)
-                        caption(L("Alan modunda fare pencere üstündeyken tıklamak o pencereyi yakalar."))
-                    }
-                    .padding(.vertical, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } label: {
-                    groupLabel(L("Görüntü"), "sparkles")
-                }
-
-                GroupBox {
-                    VStack(alignment: .leading, spacing: 14) {
-                        HStack {
-                            caption(L("Kare hızı"))
-                            Spacer()
-                            FrameRateButton(fps: 30)
-                            FrameRateButton(fps: 60)
-                            if !pro.isPro { ProBadge() }
-                        }
-
-                        HStack {
-                            caption(L("Kap"))
-                            Spacer()
-                            Picker("", selection: $settings.videoFormat) {
-                                Text("MOV").tag("mov")
-                                Text("MP4").tag("mp4")
-                            }
-                            .pickerStyle(.segmented)
-                            .labelsHidden()
-                            .frame(width: 130)
-                        }
-
-                        HStack {
-                            caption(L("Kodek"))
-                            Spacer()
-                            Picker("", selection: $settings.videoCodec) {
-                                Text("H.264").tag("h264")
-                                Text("HEVC").tag("hevc")
-                            }
-                            .pickerStyle(.segmented)
-                            .labelsHidden()
-                            .frame(width: 130)
-                            .disabled(!pro.isPro)
-                            if !pro.isPro { ProBadge() }
-                        }
-
-                        HStack {
-                            caption(L("Bit hızı"))
-                            Spacer()
-                            Picker("", selection: $settings.videoBitrateMbps) {
-                                Text(L("Otomatik")).tag(0)
-                                Text("8 Mb/s").tag(8)
-                                Text("16 Mb/s").tag(16)
-                                Text("32 Mb/s").tag(32)
-                            }
-                            .labelsHidden()
-                            .frame(width: 130)
-                            .disabled(!pro.isPro)
-                            if !pro.isPro { ProBadge() }
-                        }
-
-                        HStack {
-                            Toggle(L("Sistem sesini kaydet"), isOn: $settings.recordAudio)
-                                .toggleStyle(.switch)
-                                .disabled(!pro.isPro)
-                            if !pro.isPro { ProBadge() }
-                        }
-                        if !pro.isPro {
-                            caption(L("Pro olmadan kayıt 30 fps, H.264 ve otomatik bit hızıyla yapılır."))
-                        }
-                    }
-                    .padding(.vertical, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } label: {
-                    groupLabel(L("Video"), "record.circle")
-                }
-
-                GroupBox {
-                    driveSection
-                        .padding(.vertical, 6)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } label: {
-                    groupLabel("Google Drive", "icloud.and.arrow.up")
-                }
+                .controlSize(.small)
             }
-            .padding(16)
+        }
+
+        SettingsSection(title: L("Görüntü"), icon: "photo") {
+            HStack(spacing: 16) {
+                fieldLabel(L("Format"))
+                Picker("", selection: $settings.imageFormat) {
+                    ForEach(ImageFormat.allCases) { format in
+                        Text(format.title).tag(format)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 130)
+                Spacer()
+                Toggle(L("Görüntüleri panoya da kopyala"), isOn: $settings.copyToClipboard)
+                    .toggleStyle(.checkbox)
+            }
+            rowDivider()
+            HStack(spacing: 16) {
+                Toggle(L("İmleci dahil et"), isOn: $settings.showCursor)
+                    .toggleStyle(.checkbox)
+                Toggle(L("Akıllı pencere sezme"), isOn: $settings.smartWindowDetect)
+                    .toggleStyle(.checkbox)
+                Spacer()
+            }
+            caption(L("Alan modunda fare pencere üstündeyken tıklamak o pencereyi yakalar."))
+        }
+
+        SettingsSection(title: L("Video"), icon: "record.circle") {
+            HStack(spacing: 14) {
+                fieldLabel(L("Kare hızı"))
+                FrameRateButton(fps: 30)
+                FrameRateButton(fps: 60)
+                if !pro.isPro { ProBadge() }
+                Spacer()
+                fieldLabel(L("Kap"))
+                Picker("", selection: $settings.videoFormat) {
+                    Text("MOV").tag("mov")
+                    Text("MP4").tag("mp4")
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 110)
+            }
+            rowDivider()
+            HStack(spacing: 14) {
+                fieldLabel(L("Kodek"))
+                Picker("", selection: $settings.videoCodec) {
+                    Text("H.264").tag("h264")
+                    Text("HEVC").tag("hevc")
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 130)
+                .disabled(!pro.isPro)
+                fieldLabel(L("Bit hızı"))
+                Picker("", selection: $settings.videoBitrateMbps) {
+                    Text(L("Otomatik")).tag(0)
+                    Text("8 Mb/s").tag(8)
+                    Text("16 Mb/s").tag(16)
+                    Text("32 Mb/s").tag(32)
+                }
+                .labelsHidden()
+                .frame(width: 110)
+                .disabled(!pro.isPro)
+                Spacer()
+                Toggle(L("Sistem sesini kaydet"), isOn: $settings.recordAudio)
+                    .toggleStyle(.checkbox)
+                    .disabled(!pro.isPro)
+                if !pro.isPro { ProBadge() }
+            }
+            if !pro.isPro {
+                caption(L("Pro olmadan kayıt 30 fps, H.264 ve otomatik bit hızıyla yapılır."))
+            }
+        }
+
+        SettingsSection(title: "Google Drive", icon: "icloud.and.arrow.up") {
+            driveSection
         }
     }
 
@@ -399,67 +400,66 @@ struct OutputTab: View {
         if !auth.isConfigured {
             caption(L("Bu derlemede Google istemci kimliği yok (Resources/GoogleOAuth.plist). Kurulum için README'ye bak."))
         } else if !auth.isSignedIn {
-            VStack(alignment: .leading, spacing: 10) {
-                caption(L("Kendi Google hesabınla oturum açarsın; belirteçler yalnızca bu Mac'in Anahtar Zinciri'nde tutulur, SS+ geliştiricisinin Drive'ına erişimi olmaz."))
-                HStack {
-                    Button(L("Google ile oturum aç")) { signInToGoogle() }
-                        .disabled(auth.isSigningIn)
-                    if auth.isSigningIn {
-                        ProgressView().controlSize(.small)
-                        caption(L("Tarayıcıda Google onayı bekleniyor…"))
-                    }
+            HStack(spacing: 10) {
+                Button(L("Google ile oturum aç")) { signInToGoogle() }
+                    .disabled(auth.isSigningIn)
+                if auth.isSigningIn {
+                    ProgressView().controlSize(.small)
+                    caption(L("Tarayıcıda Google onayı bekleniyor…"))
                 }
-                if let driveError {
-                    Label(driveError, systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
+                Spacer()
+            }
+            caption(L("Kendi Google hesabınla oturum açarsın; belirteçler yalnızca bu Mac'in Anahtar Zinciri'nde tutulur, SS+ geliştiricisinin Drive'ına erişimi olmaz."))
+            if let driveError {
+                Label(driveError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.red)
             }
         } else {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: "person.crop.circle.fill.badge.checkmark")
-                        .foregroundStyle(.green)
-                    Text(auth.accountEmail ?? "")
-                        .font(.system(size: 12, weight: .medium))
-                    Spacer()
-                    Button(L("Çıkış yap")) {
-                        Task { await auth.signOut() }
-                    }
+            HStack(spacing: 8) {
+                Image(systemName: "person.crop.circle.fill.badge.checkmark")
+                    .foregroundStyle(.green)
+                Text(auth.accountEmail ?? "")
+                    .font(.system(size: 12, weight: .medium))
+                Spacer()
+                Button(L("Çıkış yap")) { Task { await auth.signOut() } }
                     .controlSize(.small)
-                }
-
+            }
+            rowDivider()
+            HStack(spacing: 16) {
                 Toggle(L("Ekran görüntülerini Drive'a yükle"), isOn: $settings.driveUploadEnabled)
-                    .toggleStyle(.switch)
+                    .toggleStyle(.checkbox)
                 Toggle(L("Video kayıtlarını da yükle"), isOn: $settings.driveUploadVideos)
-                    .toggleStyle(.switch)
+                    .toggleStyle(.checkbox)
                     .disabled(!settings.driveUploadEnabled)
-                caption(L("Videolar büyük olabilir; yükleme arka planda sürer ve önizleme kartında izlenir."))
-
-                HStack {
-                    caption(L("Klasör"))
-                    TextField("SS+", text: $settings.driveFolderName)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 12))
-                        .frame(maxWidth: 180)
-                        .onSubmit { renameDriveFolder() }
-                    Button(L("Drive'da aç")) { openDriveFolder() }
-                        .controlSize(.small)
-                        .disabled(driveBusy)
-                }
-                caption(L("Klasör Drive'ının kökünde oluşturulur; sonra Drive'da istediğin yere taşıyabilir ya da adını değiştirebilirsin — yüklemeler onu izlemeye devam eder."))
-
+                Spacer()
+            }
+            HStack(spacing: 16) {
                 Toggle(L("Bağlantıyla herkese açık paylaş"), isOn: $settings.driveShareAnyone)
-                    .toggleStyle(.switch)
+                    .toggleStyle(.checkbox)
                 Toggle(L("Linki panoya kopyala"), isOn: $settings.driveCopyLink)
-                    .toggleStyle(.switch)
+                    .toggleStyle(.checkbox)
                     .disabled(!settings.driveShareAnyone)
-
-                if let driveError {
-                    Label(driveError, systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
+                Spacer()
+            }
+            rowDivider()
+            HStack(spacing: 8) {
+                fieldLabel(L("Klasör"))
+                TextField("SS+", text: $settings.driveFolderName)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12))
+                    .frame(maxWidth: 200)
+                    .onSubmit { renameDriveFolder() }
+                Button(L("Drive'da aç")) { openDriveFolder() }
+                    .controlSize(.small)
+                    .disabled(driveBusy)
+                Spacer()
+            }
+            caption(L("Klasör Drive'ının kökünde oluşturulur; sonra Drive'da istediğin yere taşıyabilir ya da adını değiştirebilirsin — yüklemeler onu izlemeye devam eder."))
+            if let driveError {
+                Label(driveError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.red)
             }
         }
     }
@@ -501,111 +501,8 @@ struct OutputTab: View {
     }
 }
 
-// MARK: - Kısayollar
-
-struct ShortcutsTab: View {
-    @ObservedObject private var settings = SettingsStore.shared
-    @ObservedObject private var app = AppState.shared
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                GroupBox {
-                    VStack(spacing: 0) {
-                        ShortcutRecorderRow(
-                            title: L("Yakalama aracı"),
-                            icon: "camera.viewfinder",
-                            tint: .purple,
-                            hotkey: captureBinding,
-                            conflictsWith: settings.recordHotkey
-                        )
-                        Divider().padding(.leading, 44)
-                        ShortcutRecorderRow(
-                            title: L("Video kaydı başlat / durdur"),
-                            icon: "record.circle",
-                            tint: .red,
-                            hotkey: recordBinding,
-                            conflictsWith: settings.captureHotkey
-                        )
-                        Divider().padding(.leading, 44)
-                        HStack {
-                            caption(L("Varsayılanlara dön"))
-                            Spacer()
-                            Button(L("Sıfırla")) {
-                                settings.captureHotkey = .defaultCapture
-                                settings.recordHotkey = .defaultRecord
-                            }
-                            .controlSize(.small)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-
-                        if let warning = app.hotkeyWarning {
-                            Label(warning, systemImage: "exclamationmark.triangle.fill")
-                                .font(.caption)
-                                .foregroundStyle(.red)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 12)
-                                .padding(.bottom, 8)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                } label: {
-                    groupLabel(L("Genel kısayollar"), "command")
-                }
-
-                GroupBox {
-                    ShortcutRow(
-                        rows: [
-                            ("R", L("Alan modu")),
-                            ("W", L("Pencere modu")),
-                            ("⇧", L("Kare oranına kilitle")),
-                            ("↩", L("Tüm ekranı yakala")),
-                            ("Esc", L("Vazgeç")),
-                        ]
-                    )
-                    .padding(.vertical, 4)
-                } label: {
-                    groupLabel(L("Seçim ekranı"), "cursorarrow.rays")
-                }
-
-                GroupBox {
-                    ShortcutRow(
-                        rows: [
-                            ("1–7", L("Araç seç")),
-                            ("⌘Z · ⇧⌘Z", L("Geri al · yinele")),
-                            ("⌫", L("Son öğeyi geri al")),
-                            ("↩", L("Bitti · kaydet")),
-                            ("Esc", L("Çizimsiz aktar")),
-                            ("⌘.", L("Vazgeç")),
-                        ]
-                    )
-                    .padding(.vertical, 4)
-                } label: {
-                    groupLabel(L("Çizim düzenleyici"), "pencil.tip.crop.circle")
-                }
-            }
-            .padding(16)
-        }
-    }
-
-    private var captureBinding: Binding<HotkeySetting> {
-        Binding(
-            get: { settings.captureHotkey },
-            set: { settings.captureHotkey = $0 }
-        )
-    }
-
-    private var recordBinding: Binding<HotkeySetting> {
-        Binding(
-            get: { settings.recordHotkey },
-            set: { settings.recordHotkey = $0 }
-        )
-    }
-}
-
-/// Kare hızı seçim düğmesi (tip çıkarımını hafifletmek için ayrı view).
-/// 60 fps Pro'ya özeldir: seçilebilir gibi görünüp sessizce 30'a düşmesin.
+/// Kare hızı seçim düğmesi. 60 fps Pro'ya özeldir: seçilebilir gibi görünüp
+/// sessizce 30'a düşmesin.
 private struct FrameRateButton: View {
     @ObservedObject private var settings = SettingsStore.shared
     @ObservedObject private var pro = ProManager.shared
@@ -626,12 +523,67 @@ private struct FrameRateButton: View {
     }
 }
 
-/// Değiştirilebilir kısayol satırı: "Kaydet"e basılır, istenen tuş kombinasyonuna
-/// basılır ve kısayol anında yeniden kaydedilir.
-struct ShortcutRecorderRow: View {
-    let title: String
-    let icon: String
-    let tint: Color
+// MARK: - Kısayollar
+
+struct ShortcutsTab: View {
+    @ObservedObject private var settings = SettingsStore.shared
+    @ObservedObject private var app = AppState.shared
+
+    var body: some View {
+        SettingsSection(title: L("Genel kısayollar"), icon: "keyboard") {
+            HStack(spacing: 12) {
+                fieldLabel(L("Yakalama aracı"))
+                ShortcutRecorderButton(hotkey: captureBinding, conflictsWith: settings.recordHotkey)
+                fieldLabel(L("Video kaydı başlat / durdur"))
+                ShortcutRecorderButton(hotkey: recordBinding, conflictsWith: settings.captureHotkey)
+                Spacer()
+                Button(L("Sıfırla")) {
+                    settings.captureHotkey = .defaultCapture
+                    settings.recordHotkey = .defaultRecord
+                }
+                .controlSize(.small)
+            }
+            if let warning = app.hotkeyWarning {
+                Label(warning, systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.red)
+            }
+        }
+
+        HStack(alignment: .top, spacing: 16) {
+            SettingsSection(title: L("Seçim ekranı"), icon: "cursorarrow.rays") {
+                ShortcutList(rows: [
+                    ("R / A", L("Alan modu")),
+                    ("W / P", L("Pencere modu")),
+                    ("⇧", L("Kare oranına kilitle")),
+                    ("↩", L("Tüm ekranı yakala")),
+                    ("Esc", L("Vazgeç")),
+                ])
+            }
+            SettingsSection(title: L("Çizim düzenleyici"), icon: "pencil.tip.crop.circle") {
+                ShortcutList(rows: [
+                    ("1–7", L("Araç seç")),
+                    ("⌘Z · ⇧⌘Z", L("Geri al · yinele")),
+                    ("⌫", L("Son öğeyi geri al")),
+                    ("↩", L("Bitti · kaydet")),
+                    ("Esc", L("Çizimsiz aktar")),
+                    ("⌘.", L("Vazgeç")),
+                ])
+            }
+        }
+    }
+
+    private var captureBinding: Binding<HotkeySetting> {
+        Binding(get: { settings.captureHotkey }, set: { settings.captureHotkey = $0 })
+    }
+
+    private var recordBinding: Binding<HotkeySetting> {
+        Binding(get: { settings.recordHotkey }, set: { settings.recordHotkey = $0 })
+    }
+}
+
+/// Kısayol kaydedici: tıklanır, yeni kombinasyona basılır, anında kaydedilir.
+struct ShortcutRecorderButton: View {
     @Binding var hotkey: HotkeySetting
     /// Diğer global kısayol: aynısı seçilirse reddedilir (ikisi birden kaydedilemez).
     var conflictsWith: HotkeySetting?
@@ -642,49 +594,21 @@ struct ShortcutRecorderRow: View {
     @State private var reason: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Label(title, systemImage: icon)
-                    .font(.system(size: 13))
-                    .foregroundStyle(tint == .red ? .red : .primary)
-                Spacer()
-                recordButton
-            }
-            if let reason {
-                Text(reason)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .onDisappear { stopRecording() }
-    }
-
-    private var recordButton: some View {
         Button {
             recording ? stopRecording() : startRecording()
         } label: {
             Text(recording ? L("Kısayola bas…") : hotkey.display)
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundStyle(recording ? Color.accentColor : Color.primary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .frame(minWidth: 72)
-                .background(
-                    RoundedRectangle(cornerRadius: 7)
-                        .fill(Color.white.opacity(0.06))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 7)
-                                .strokeBorder(
-                                    recording ? Color.accentColor : (invalidFlash ? Color.red : Color.white.opacity(0.15)),
-                                    lineWidth: recording ? 1.5 : 0.5
-                                )
-                        )
-                )
+                .frame(minWidth: 84)
         }
-        .buttonStyle(.plain)
-        .help(recording ? L("Esc: vazgeç") : L("Değiştirmek için tıkla ve yeni kısayola bas"))
+        .controlSize(.small)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(recording ? Color.accentColor : (invalidFlash ? Color.red : Color.clear), lineWidth: 1.5)
+        )
+        .help(reason ?? (recording ? L("Esc: vazgeç") : L("Değiştirmek için tıkla ve yeni kısayola bas")))
+        .onDisappear { stopRecording() }
     }
 
     private func startRecording() {
@@ -692,12 +616,10 @@ struct ShortcutRecorderRow: View {
         recording = true
         reason = nil
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
-            // Esc: vazgeç
             if event.keyCode == 53 {
                 stopRecording()
                 return nil
             }
-            // Karakteri DÜZENDEN, değiştiricisiz çöz: ⇧1 → "1", ok tuşları → nil.
             guard let char = HotKeyManager.shared.baseCharacter(forKeyCode: event.keyCode),
                   Self.isBindable(char) else {
                 flashInvalid(L("Bu tuş kısayol olamaz; harf, rakam ya da noktalama seç."))
@@ -722,7 +644,7 @@ struct ShortcutRecorderRow: View {
     /// Yazdırılabilir, özel-kullanım olmayan tek karakterler bağlanabilir.
     private static func isBindable(_ char: Character) -> Bool {
         guard let scalar = char.unicodeScalars.first, char.unicodeScalars.count == 1 else { return false }
-        if (0xE000...0xF8FF).contains(scalar.value) { return false }   // ok / işlev tuşları
+        if (0xE000...0xF8FF).contains(scalar.value) { return false }
         if scalar.properties.generalCategory == .control || char.isWhitespace { return false }
         return char.isLetter || char.isNumber || char.isPunctuation || char.isSymbol
     }
@@ -747,35 +669,21 @@ struct ShortcutRecorderRow: View {
     }
 }
 
-// MARK: - Kısayol satırı (salt okunur)
-
-struct ShortcutRow: View {
+/// Salt okunur kısayol listesi (tuş sağda, rozet biçiminde).
+private struct ShortcutList: View {
     let rows: [(String, String)]
 
     var body: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+        VStack(spacing: 6) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                 HStack {
-                    Text(row.1)
-                        .font(.system(size: 13))
+                    Text(row.1).font(.system(size: 12))
                     Spacer()
                     Text(row.0)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(Color.white.opacity(0.06))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5)
-                                )
-                        )
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                if index < rows.count - 1 {
-                    Divider().padding(.leading, 44)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(0.07)))
                 }
             }
         }
@@ -791,48 +699,44 @@ struct ProTab: View {
     @FocusState private var codeFieldFocused: Bool
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                GroupBox {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Image(systemName: pro.isPro ? "star.fill" : "star")
-                                .foregroundStyle(pro.isPro ? .yellow : .secondary)
-                                .font(.title2)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(pro.isPro ? L("SS+ Pro aktif") : "SS+ Pro")
-                                    .font(.headline)
-                                Text(pro.isPro ? L("Tüm özellikler açık") : L("Tüm özelliklerin kilidini aç"))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if pro.isPro {
-                                Button(L("Kaldır")) {
-                                    pro.clearCode()
-                                    codeInput = ""
-                                    codeError = false
-                                }
-                                .controlSize(.small)
-                            }
-                        }
-                        Divider()
-                        codeSection
-                        Divider()
-                        // Tek kaynak: ProManager.features (README ve OKU-BENI de buna uyar)
-                        VStack(alignment: .leading, spacing: 6) {
-                            ForEach(Array(ProManager.features.enumerated()), id: \.offset) { _, feature in
-                                featureRow(feature.icon, feature.title, feature.detail)
-                            }
-                        }
+        SettingsSection(title: L("Abonelik"), icon: "crown") {
+            HStack(spacing: 12) {
+                Image(systemName: pro.isPro ? "star.fill" : "star")
+                    .foregroundStyle(pro.isPro ? .yellow : .secondary)
+                    .font(.title2)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(pro.isPro ? L("SS+ Pro aktif") : "SS+ Pro")
+                        .font(.headline)
+                    Text(pro.isPro ? L("Tüm özellikler açık") : L("Tüm özelliklerin kilidini aç"))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if pro.isPro {
+                    Button(L("Kaldır")) {
+                        pro.clearCode()
+                        codeInput = ""
+                        codeError = false
                     }
-                    .padding(.vertical, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } label: {
-                    groupLabel(L("Abonelik"), "crown")
+                    .controlSize(.small)
                 }
             }
-            .padding(16)
+            rowDivider()
+            codeSection
+        }
+
+        SettingsSection(title: L("Pro özellikleri"), icon: "sparkles") {
+            ForEach(Array(ProManager.features.enumerated()), id: \.offset) { _, feature in
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: feature.icon)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 16)
+                    Text(feature.title).font(.system(size: 12, weight: .semibold))
+                    Text("— " + feature.detail).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Spacer()
+                }
+            }
         }
     }
 
@@ -843,40 +747,34 @@ struct ProTab: View {
                 Image(systemName: "checkmark.seal.fill")
                     .foregroundStyle(.green)
                     .font(.system(size: 11))
-                Text(L("Kod ile etkinleştirildi"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                caption(L("Kod ile etkinleştirildi"))
                 if let code = pro.redeemedCode {
                     Text(code.uppercased())
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.green.opacity(0.15))
-                        )
+                        .background(RoundedRectangle(cornerRadius: 4).fill(Color.green.opacity(0.15)))
                 }
             }
         } else {
-            VStack(alignment: .leading, spacing: 6) {
-                caption(L("Etkinleştirme kodu"))
-                HStack(spacing: 8) {
-                    TextField(L("Kodu gir"), text: $codeInput)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 12, design: .monospaced))
-                        .frame(maxWidth: 180)
-                        .focused($codeFieldFocused)
-                        .onSubmit(submitCode)
-                        .onChange(of: codeInput) { _, _ in codeError = false }
-                    Button(L("Etkinleştir"), action: submitCode)
-                        .controlSize(.small)
-                        .disabled(codeInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-                if codeError {
-                    Label(L("Bu kod geçerli değil."), systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
+            HStack(spacing: 8) {
+                fieldLabel(L("Etkinleştirme kodu"))
+                TextField(L("Kodu gir"), text: $codeInput)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12, design: .monospaced))
+                    .frame(maxWidth: 180)
+                    .focused($codeFieldFocused)
+                    .onSubmit(submitCode)
+                    .onChange(of: codeInput) { _, _ in codeError = false }
+                Button(L("Etkinleştir"), action: submitCode)
+                    .controlSize(.small)
+                    .disabled(codeInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Spacer()
+            }
+            if codeError {
+                Label(L("Bu kod geçerli değil."), systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.red)
             }
         }
     }
@@ -888,22 +786,6 @@ struct ProTab: View {
             codeFieldFocused = false
         } else {
             codeError = true
-        }
-    }
-
-    private func featureRow(_ icon: String, _ title: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .frame(width: 16)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
         }
     }
 }

@@ -216,6 +216,16 @@ enum Localization {
         "Kapatılırsa ada yalnızca kayıt ve seçim sırasında görünür; çentik tamamen sessiz kalır.": "When off, the island appears only while recording or selecting; the notch stays completely quiet.",
         "Arayüz dili değişikliği anında uygulanır.": "Language changes apply immediately.",
 
+        // Ayarlar — yeni kompakt düzen
+        "Girişte başlat": "Launch at login",
+        "Hakkında": "About",
+        "Kaynak kodu (GitHub)": "Source code (GitHub)",
+        "macOS için hafif ekran yakalama: ada arayüzü, yerinde düzenleme, video kaydı ve isteğe bağlı Google Drive paylaşımı.":
+            "Lightweight screen capture for macOS: island UI, in-place editing, video recording and optional Google Drive sharing.",
+        "Format": "Format",
+        "İmleci dahil et": "Include cursor",
+        "Pro özellikleri": "Pro features",
+
         // Bakım / kaldırma
         "Bakım": "Maintenance",
         "İzin sorunlarında ya da temiz kurulum için: macOS'taki SS+ izin kayıtlarını (Ekran Kaydı vb.) siler. İstersen ayarları ve Google oturumunu da kaldırıp uygulamayı Çöp'e taşır.":
