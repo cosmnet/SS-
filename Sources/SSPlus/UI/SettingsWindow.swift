@@ -216,6 +216,21 @@ struct GeneralTab: View {
 
                 GroupBox {
                     VStack(alignment: .leading, spacing: 10) {
+                        caption(L("İzin sorunlarında ya da temiz kurulum için: macOS'taki SS+ izin kayıtlarını (Ekran Kaydı vb.) siler. İstersen ayarları ve Google oturumunu da kaldırıp uygulamayı Çöp'e taşır."))
+                        HStack {
+                            Spacer()
+                            Button(L("Kaldır / İzinleri sıfırla…")) { Uninstaller.present() }
+                                .controlSize(.small)
+                        }
+                    }
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } label: {
+                    groupLabel(L("Bakım"), "wrench.and.screwdriver")
+                }
+
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 10) {
                         Picker("", selection: $settings.language) {
                             ForEach(AppLanguage.allCases) { lang in
                                 Text(lang.title).tag(lang)

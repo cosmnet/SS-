@@ -216,6 +216,31 @@ enum Localization {
         "Kapatılırsa ada yalnızca kayıt ve seçim sırasında görünür; çentik tamamen sessiz kalır.": "When off, the island appears only while recording or selecting; the notch stays completely quiet.",
         "Arayüz dili değişikliği anında uygulanır.": "Language changes apply immediately.",
 
+        // Bakım / kaldırma
+        "Bakım": "Maintenance",
+        "İzin sorunlarında ya da temiz kurulum için: macOS'taki SS+ izin kayıtlarını (Ekran Kaydı vb.) siler. İstersen ayarları ve Google oturumunu da kaldırıp uygulamayı Çöp'e taşır.":
+            "For permission problems or a clean install: removes SS+'s macOS permission records (Screen Recording etc.). Optionally also removes settings and the Google sign-in and moves the app to the Trash.",
+        "Kaldır / İzinleri sıfırla…": "Uninstall / Reset permissions…",
+        "SS+ kaldırılsın mı?": "Uninstall SS+?",
+        """
+        İzinleri sıfırla: Sistem Ayarları → Gizlilik ve Güvenlik'teki SS+ kayıtları \
+        (Ekran Kaydı vb.) silinir ve uygulama kapanır; bir sonraki açılışta izin yeniden istenir. \
+        Ayarların ve dosyaların korunur.
+
+        Tamamen kaldır: Buna ek olarak tüm ayarlar, Google oturumu ve pano arşivi silinir, \
+        uygulama Çöp'e taşınır. Kaydettiğin ekran görüntüleri ve videolar silinmez.
+        """:
+        """
+        Reset permissions: SS+'s entries under System Settings → Privacy & Security \
+        (Screen Recording etc.) are removed and the app quits; the next launch asks for permission again. \
+        Your settings and files are kept.
+
+        Uninstall completely: additionally deletes all settings, the Google sign-in and the clipboard archive, \
+        and moves the app to the Trash. Your saved screenshots and videos are not deleted.
+        """,
+        "İzinleri sıfırla ve çık": "Reset permissions and quit",
+        "Tamamen kaldır": "Uninstall completely",
+
         // Ayarlar — Kayıt & Çıktı
         "Konum": "Location",
         "Değiştir…": "Change…",
@@ -293,6 +318,11 @@ enum Localization {
         "Google Drive hatası (%d): %@": "Google Drive error (%d): %@",
         "Google Drive beklenmeyen bir yanıt verdi.": "Google Drive returned an unexpected response.",
         "Tamam, SS+'a dönebilirsin.": "All set — you can return to SS+.",
+        "Google Drive bağlandı": "Google Drive connected",
+        "Bağlantı kurulamadı": "Connection failed",
+        "Bu pencereyi kapatabilirsin; ekran görüntülerin artık Drive'a yüklenecek.": "You can close this window; your screenshots will now be uploaded to Drive.",
+        "Oturum açma tamamlanmadı. SS+ Ayarlar'dan tekrar deneyebilirsin.": "Sign-in didn't complete. You can try again from SS+ Settings.",
+        "Pencereyi kapat": "Close window",
 
         // Ayarlar — Pro
         "Abonelik": "Subscription",

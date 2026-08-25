@@ -381,19 +381,64 @@ private final class LoopbackServer: @unchecked Sendable {
         let state = items.first { $0.name == "state" }?.value
         let oauthError = items.first { $0.name == "error" }?.value
 
-        let title = (code != nil) ? L("Tamam, SS+'a dönebilirsin.") : L("Oturum açma iptal edildi.")
-        let html = """
-        <!doctype html><html><head><meta charset="utf-8"><title>SS+</title></head>
-        <body style="font-family:-apple-system,system-ui;text-align:center;padding:64px;color:#222">
-        <h2>\(title)</h2><p style="color:#777">SS+</p></body></html>
-        """
-        send(connection, status: "200 OK", body: html)
+        send(connection, status: "200 OK", body: Self.resultPage(success: code != nil))
 
         if let code, let state {
             finish(.success((code, state)))
         } else if oauthError != nil {
             finish(.failure(GoogleAuthError.cancelled))
         }
+    }
+
+    /// Tarayıcıda gösterilen sonuç sayfası: markalı, kapatma düğmeli, kendini
+    /// kapatmayı dener (tarayıcı izin verirse).
+    private static func resultPage(success: Bool) -> String {
+        let title = success ? L("Google Drive bağlandı") : L("Bağlantı kurulamadı")
+        let detail = success
+            ? L("Bu pencereyi kapatabilirsin; ekran görüntülerin artık Drive'a yüklenecek.")
+            : L("Oturum açma tamamlanmadı. SS+ Ayarlar'dan tekrar deneyebilirsin.")
+        let close = L("Pencereyi kapat")
+        let iconPath = success
+            ? "M20 6L9 17l-5-5"
+            : "M18 6L6 18M6 6l12 12"
+        let accent = success ? "#8E4BF0" : "#C8323E"
+        return """
+        <!doctype html>
+        <html lang="tr"><head><meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>SS+ · \(title)</title>
+        <style>
+          :root{color-scheme:light dark;--ink:#1B1720;--muted:#6E6779;--paper:#FBFAFC;--card:#fff;--line:#E6E1EC}
+          @media(prefers-color-scheme:dark){:root{--ink:#F0ECF5;--muted:#A79FB3;--paper:#121016;--card:#1A1721;--line:#2B2634}}
+          *{box-sizing:border-box}
+          body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--paper);color:var(--ink);
+               font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+          .card{width:min(440px,92vw);background:var(--card);border:1px solid var(--line);border-radius:20px;
+                padding:40px 32px 32px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.12)}
+          .mark{width:64px;height:64px;margin:0 auto 20px;border-radius:18px;display:grid;place-items:center;
+                background:linear-gradient(135deg,#FF5C9E,#8E4BF0)}
+          .mark svg{width:32px;height:32px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+          .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;letter-spacing:.08em;
+                 text-transform:uppercase;color:\(accent);margin-bottom:10px}
+          .badge svg{width:14px;height:14px;stroke:\(accent);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+          h1{font-size:22px;margin:0 0 8px;letter-spacing:-.01em}
+          p{margin:0 0 24px;color:var(--muted)}
+          button{font:inherit;font-weight:600;color:#fff;background:\(accent);border:0;border-radius:12px;padding:12px 22px;cursor:pointer}
+          button:hover{filter:brightness(1.08)}
+          .app{margin-top:18px;font-size:12px;color:var(--muted)}
+        </style></head>
+        <body>
+          <div class="card">
+            <div class="mark"><svg viewBox="0 0 24 24"><path d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3"/></svg></div>
+            <div class="badge"><svg viewBox="0 0 24 24"><path d="\(iconPath)"/></svg>SS+</div>
+            <h1>\(title)</h1>
+            <p>\(detail)</p>
+            <button onclick="window.close()">\(close)</button>
+            <div class="app">SS+ · Google Drive</div>
+          </div>
+          <script>setTimeout(function(){try{window.close()}catch(e){}},1500)</script>
+        </body></html>
+        """
     }
 
     private func send(_ connection: NWConnection, status: String, body: String) {
