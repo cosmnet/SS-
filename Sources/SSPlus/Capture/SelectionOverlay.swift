@@ -202,8 +202,10 @@ final class SelectionView: NSView {
         var list: [(CGWindowID, CGRect)] = []
         for entry in info {
             guard let layer = entry[kCGWindowLayer as String] as? Int, layer == 0,
-                  let pid = entry[kCGWindowOwnerPID as String] as? pid_t, pid != myPID,
+                  let pid = entry[kCGWindowOwnerPID as String] as? pid_t,
                   let number = entry[kCGWindowNumber as String] as? Int,
+                  // Kendi pencerelerimizden yalnızca yakalanabilir olanlar (Ayarlar) seçilebilir
+                  pid != myPID || CaptureVisibility.capturableOwnWindowIDs.contains(CGWindowID(number)),
                   let boundsDict = entry[kCGWindowBounds as String] as? NSDictionary,
                   let cgRect = CGRect(dictionaryRepresentation: boundsDict as CFDictionary),
                   cgRect.width > 40, cgRect.height > 40 else { continue }

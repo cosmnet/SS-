@@ -19,6 +19,14 @@ enum CaptureError: LocalizedError {
     }
 }
 
+/// SS+'ın kendi pencerelerinden yakalamaya DAHİL edilecek olanlar (ör. Ayarlar).
+/// Geçici arayüz pencereleri (seçim katmanı, ada, önizleme kartı, menü paneli,
+/// çizim katmanı) `sharingType = .none` ile zaten hiçbir yakalamaya girmez;
+/// buradaki liste yalnızca "normal" pencerelerimizi görünür kılar.
+enum CaptureVisibility {
+    static var capturableOwnWindowIDs: Set<CGWindowID> = []
+}
+
 /// Ekran görüntüsü motoru — sürüme göre yönlendirir.
 ///
 /// • macOS 14+: ScreenCaptureKit `SCScreenshotManager` (imleç, en iyi çözünürlük).
@@ -81,9 +89,15 @@ enum SCKContent {
         return content.displays.first { $0.displayID == id } ?? content.displays.first
     }
 
+    /// Filtreden çıkarılacak kendi pencerelerimiz: Ayarlar gibi yakalanabilir
+    /// olarak kaydedilenler hariç.
+    @MainActor
     static func ownWindows(in content: SCShareableContent) -> [SCWindow] {
         let pid = ProcessInfo.processInfo.processIdentifier
-        return content.windows.filter { $0.owningApplication?.processID == pid }
+        let capturable = CaptureVisibility.capturableOwnWindowIDs
+        return content.windows.filter {
+            $0.owningApplication?.processID == pid && !capturable.contains($0.windowID)
+        }
     }
 
     /// ScreenCaptureKit hatasını anlamlı bir SS+ hatasına çevirir: yalnızca

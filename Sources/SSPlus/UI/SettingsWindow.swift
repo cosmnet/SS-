@@ -38,8 +38,11 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
         window.setContentSize(NSSize(width: 640, height: 600))
         window.center()
         window.isReleasedWhenClosed = false
-        window.sharingType = .none   // kayıt sırasında açılırsa videoya girmesin
         window.delegate = WindowKeeper.shared
+        // Ayarlar penceresi yakalanabilir olmalı (ör. belgeleme için ekran görüntüsü);
+        // diğer SS+ pencereleri sharingType = .none ile görünmez kalır.
+        window.sharingType = .readOnly
+        CaptureVisibility.capturableOwnWindowIDs.insert(CGWindowID(window.windowNumber))
 
         // Sekmeler başlık çubuğunda (Sistem Ayarları / MeetingBar tarzı)
         let toolbar = NSToolbar(identifier: "ssplus.settings")
