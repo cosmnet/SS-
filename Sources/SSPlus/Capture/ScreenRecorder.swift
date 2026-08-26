@@ -105,7 +105,7 @@ final class ScreenRecorder: NSObject, ScreenRecording, SCStreamOutput, SCStreamD
         config.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(safeFPS))
         config.pixelFormat = kCVPixelFormatType_32BGRA
         config.showsCursor = showCursor
-        config.queueDepth = 6
+        config.queueDepth = 3   // her kuyruk karesi tam boyutlu bir yüzeydir; 3 yeterli
         if #available(macOS 13, *) { config.capturesAudio = audioEnabled }
         if #available(macOS 15, *), micViaSCK {
             config.captureMicrophone = true

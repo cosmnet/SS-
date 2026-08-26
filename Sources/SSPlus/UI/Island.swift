@@ -86,9 +86,53 @@ final class IslandController {
         static let recordingDrop: CGFloat = 46
     }
 
+    /// Açılışta çağrılır: gözlemcileri kurar; paneli yalnızca görünmesi gerektiğinde
+    /// oluşturur (ada boşta gizliyse bellekte SwiftUI paneli tutulmaz).
     func show() {
-        guard panel == nil, let screen = targetScreen else { return }
+        subscribeIfNeeded()
+        refreshFrame()
+    }
 
+    private var subscribed = false
+
+    private func subscribeIfNeeded() {
+        guard !subscribed else { return }
+        subscribed = true
+
+        AppState.shared.$phase
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] phase in
+                guard let self else { return }
+                // Yakalama/kayıt başlayınca sabitlemeyi bırak ki iş bitince ada toparlansın.
+                if phase != .idle, self.pinned {
+                    self.pinned = false
+                } else {
+                    self.refreshFrame()
+                }
+            }
+            .store(in: &cancellables)
+
+        // Ayarlardan ada anahtarı değişince görünürlüğü tazele
+        SettingsStore.shared.$islandEnabled
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.refreshFrame() }
+            .store(in: &cancellables)
+
+        // Ekran değişimlerinde (harici monitör, çözünürlük, menü çubuğu) ölçüleri tazele.
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            MainActor.assumeIsolated {
+                IslandController.shared.refreshFrame()
+            }
+        }
+    }
+
+    /// Paneli (ve SwiftUI barındırma görünümünü) gerektiğinde kurar.
+    private func ensurePanel() {
+        guard panel == nil, let screen = targetScreen else { return }
         ui.metrics = currentMetrics
 
         let panel = IslandPanel(
@@ -126,43 +170,24 @@ final class IslandController {
         ])
 
         panel.contentView = tracking
-        if shouldBeVisible {
-            panel.orderFrontRegardless()
-        }
+        panel.orderFrontRegardless()
         self.panel = panel
         self.trackingView = tracking
-
-        AppState.shared.$phase
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] phase in
-                guard let self else { return }
-                // Yakalama/kayıt başlayınca sabitlemeyi bırak ki iş bitince ada toparlansın.
-                if phase != .idle, self.pinned {
-                    self.pinned = false
-                } else {
-                    self.refreshFrame()
-                }
-            }
-            .store(in: &cancellables)
-
-        // Ayarlardan ada anahtarı değişince görünürlüğü tazele
-        SettingsStore.shared.$islandEnabled
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.refreshFrame() }
-            .store(in: &cancellables)
-
-        // Ekran değişimlerinde (harici monitör, çözünürlük, menü çubuğu) ölçüleri tazele.
-        screenObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didChangeScreenParametersNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            MainActor.assumeIsolated {
-                IslandController.shared.refreshFrame()
-            }
-        }
-
         ui.expanded = isExpanded
+    }
+
+    /// Ada gizlenince paneli tümüyle bırak: barındırma görünümü ve katmanları belleğe geri döner.
+    private func destroyPanel() {
+        dwellWorkItem?.cancel()
+        dwellWorkItem = nil
+        collapseWorkItem?.cancel()
+        collapseWorkItem = nil
+        hovering = false
+        guard let panel else { return }
+        panel.orderOut(nil)
+        panel.contentView = nil
+        self.panel = nil
+        trackingView = nil
     }
 
     var isExpanded: Bool {
@@ -297,15 +322,14 @@ final class IslandController {
             ui.expanded = expanded
         }
 
-        guard let panel else { return }
-
-        // Ayar kapalıyken ada boşta tümüyle gizlenir (kayıt/seçimde daima görünür)
+        // Ayar kapalıyken ada boşta tümüyle kaldırılır (kayıt/seçimde daima görünür)
         if shouldBeVisible {
-            if !panel.isVisible { panel.orderFrontRegardless() }
+            ensurePanel()
         } else {
-            if panel.isVisible { panel.orderOut(nil) }
+            destroyPanel()
             return
         }
+        guard let panel else { return }
 
         // Seçim sırasında island, overlay'in üstünde HUD olarak kalsın
         if case .selecting = AppState.shared.phase {

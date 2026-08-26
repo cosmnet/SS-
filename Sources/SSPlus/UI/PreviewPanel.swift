@@ -47,6 +47,9 @@ final class PreviewPanelController {
     /// Kartın DIŞINDAKİ tıklamaları yakalayan izleyiciler (kendi penceremiz dahil her yer)
     private var localClickMonitor: Any?
     private var globalClickMonitor: Any?
+    /// Kapanış animasyonu bittiğinde yakalamayı serbest bırakmak için: bu arada
+    /// yeni bir kart gösterildiyse (token değişir) eski kapanış onu silmez.
+    private var closeToken = UUID()
 
     private init() {}
 
@@ -55,6 +58,7 @@ final class PreviewPanelController {
     /// - note: Karttaki durum satırı (örn. "Kayıt kesildi…"); nil ise varsayılan metin.
     func show(_ item: PreviewItem, note: String? = nil) {
         close()
+        closeToken = UUID()   // önceki kapanışın tamamlanma bloğu artık geçersiz
         model.item = item
         model.status = note
         model.upload = nil
@@ -189,12 +193,24 @@ final class PreviewPanelController {
         guard let panel else { return }
         self.panel = nil
         let frame = panel.frame
+        let token = UUID()
+        closeToken = token
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.18
             panel.animator().alphaValue = 0
             panel.animator().setFrame(frame.insetBy(dx: 8, dy: 8), display: true)
-        }, completionHandler: {
-            panel.orderOut(nil)
+        }, completionHandler: { [weak self] in
+            // Tamamlanma bloğu ana iş parçacığında çağrılır.
+            MainActor.assumeIsolated {
+                panel.orderOut(nil)
+                panel.contentView = nil
+                // Tam çözünürlüklü yakalama (Retina'da onlarca MB) kart kapanınca
+                // bellekte kalmasın; yeni kart gösterildiyse dokunma.
+                guard let self, self.closeToken == token, self.panel == nil else { return }
+                self.model.item = nil
+                self.model.upload = nil
+                self.model.status = nil
+            }
         })
     }
 

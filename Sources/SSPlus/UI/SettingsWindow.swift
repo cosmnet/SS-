@@ -84,6 +84,12 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
         return item
     }
 
+    /// Pencere kapanınca bırakılır; bir sonraki açılışta yeniden kurulur.
+    func windowDidClose() {
+        window = nil
+        segmented = nil
+    }
+
     @objc private func tabChanged(_ sender: NSSegmentedControl) {
         let tabs = SettingsView.Tab.allCases
         guard tabs.indices.contains(sender.selectedSegment) else { return }
@@ -98,6 +104,9 @@ final class WindowKeeper: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         DispatchQueue.main.async {
             NSApp.setActivationPolicy(.accessory)
+            MainActor.assumeIsolated {
+                SettingsWindowController.shared.windowDidClose()
+            }
         }
     }
 }

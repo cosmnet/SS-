@@ -26,13 +26,19 @@ enum OutputPipeline {
     static func deliverImage(_ cgImage: CGImage, scale: CGFloat) {
         let settings = SettingsStore.shared
         let format = settings.imageFormat
-
-        let rep = NSBitmapImageRep(cgImage: cgImage)
-        rep.size = NSSize(
+        let pointSize = NSSize(
             width: CGFloat(cgImage.width) / scale,
             height: CGFloat(cgImage.height) / scale
         )
-        guard let data = encode(rep, format: format) else {
+
+        // Bitmap kopyası yalnızca kodlama süresince yaşasın (Retina'da onlarca MB);
+        // otomatik serbest bırakma havuzu AppKit geçicilerini hemen boşaltır.
+        let encoded: Data? = autoreleasepool {
+            let rep = NSBitmapImageRep(cgImage: cgImage)
+            rep.size = pointSize
+            return encode(rep, format: format)
+        }
+        guard let data = encoded else {
             AppState.shared.presentError(CaptureError.encodeFailed)
             return
         }
@@ -48,7 +54,7 @@ enum OutputPipeline {
             return
         }
 
-        let nsImage = NSImage(cgImage: cgImage, size: rep.size)
+        let nsImage = NSImage(cgImage: cgImage, size: pointSize)
 
         if settings.copyToClipboard {
             copyToPasteboard(nsImage, encoded: data, fileExtension: format.fileExtension)
@@ -59,7 +65,8 @@ enum OutputPipeline {
         if settings.showPreview {
             PreviewPanelController.shared.show(.image(nsImage, url, cgImage, scale))
         }
-        // Kart gösterildikten SONRA: yükleme durumu karta işlenir.
+        // Kart gösterildikten SONRA: yükleme durumu karta işlenir. Yükleme kapalıysa
+        // `data` burada son kez kullanılır ve fonksiyon bitince serbest kalır.
         DriveUploadCoordinator.shared.upload(imageData: data, mimeType: format.mimeType, localURL: url)
     }
 
@@ -69,12 +76,16 @@ enum OutputPipeline {
         let settings = SettingsStore.shared
         let format: ImageFormat = url.pathExtension.lowercased() == "jpg" ? .jpg : .png
 
-        let rep = NSBitmapImageRep(cgImage: cgImage)
-        rep.size = NSSize(
+        let pointSize = NSSize(
             width: CGFloat(cgImage.width) / scale,
             height: CGFloat(cgImage.height) / scale
         )
-        guard let data = encode(rep, format: format) else { return }
+        let encoded: Data? = autoreleasepool {
+            let rep = NSBitmapImageRep(cgImage: cgImage)
+            rep.size = pointSize
+            return encode(rep, format: format)
+        }
+        guard let data = encoded else { return }
         do {
             try data.write(to: url, options: .atomic)
         } catch {
@@ -83,7 +94,7 @@ enum OutputPipeline {
         }
 
         if settings.copyToClipboard {
-            let nsImage = NSImage(cgImage: cgImage, size: rep.size)
+            let nsImage = NSImage(cgImage: cgImage, size: pointSize)
             copyToPasteboard(nsImage, encoded: data, fileExtension: format.fileExtension)
         }
         // Drive'daki dosya da güncellenir (aynı kimlik, aynı bağlantı).
