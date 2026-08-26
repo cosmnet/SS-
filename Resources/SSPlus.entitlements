@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Hardened Runtime (notarizasyon için zorunlu) altında mikrofon erişimi
+         yalnızca bu entitlement ile mümkündür. "Mikrofonu kaydet" seçeneği
+         AVCaptureDevice / SCStream .microphone yolunu kullanıyor.
+         Ekran yakalama (ScreenCaptureKit, CGWindowList) entitlement istemez;
+         TCC izniyle yönetilir. Uygulama sandbox'lı değil, ağ ve dosya erişimi
+         için ek entitlement gerekmez. -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+</dict>
+</plist>

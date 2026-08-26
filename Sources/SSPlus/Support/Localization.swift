@@ -51,6 +51,50 @@ enum Localization {
     // MARK: - İngilizce tablo (anahtar: Türkçe kaynak metin)
 
     static let english: [String: String] = [
+        "Çentik hizasını göster": "Show notch alignment",
+        "Uygulamanın çentiği nerede sandığını 5 saniyeliğine ekrana çizer. Ada kaymış görünüyorsa buradan doğrulanır.":
+            "Draws where the app thinks the notch is, for 5 seconds. Use it to confirm alignment if the island looks off.",
+        "Bu ekranda çentik yok — ada menü çubuğunun altında serbest durur.":
+            "This display has no notch — the island floats below the menu bar.",
+        "Algılanan: %@ · çentik %d × %d pt · ada çentiği kaplar, içerik iki yana yerleşir.":
+            "Detected: %@ · notch %d × %d pt · the island covers the notch and content sits on either side.",
+        "MacBook Air": "MacBook Air",
+        "MacBook Pro": "MacBook Pro",
+        "Çentikli Mac": "Mac with a notch",
+        // İzin ekranı
+        "SS+ İzinleri": "SS+ Permissions",
+        "SS+ birkaç izin istiyor": "SS+ needs a few permissions",
+        "Hepsi bu ekranda — tek tek karşına çıkmayacak. SS+ hiçbir veriyi dışarı göndermez; her izin yalnızca onu kullandığın özellik için gerekir ve istediğin zaman geri alabilirsin.":
+            "They are all on this screen — you will not be asked one by one. SS+ sends no data anywhere; each permission is only needed for the feature that uses it, and you can revoke it at any time.",
+        "Ekran Kaydı": "Screen Recording",
+        "Mikrofon": "Microphone",
+        "Gerekli": "Required",
+        "İsteğe bağlı": "Optional",
+        "Verildi": "Granted",
+        "İzin ver": "Grant",
+        "Ayarlarda aç": "Open in Settings",
+        "Şimdilik geç": "Skip for now",
+        "Bitti": "Done",
+        "İzinler…": "Permissions…",
+        "İzin çalışmıyor mu?": "Permission not working?",
+        "Ekran görüntüsü ve video alabilmek için. macOS, ekranı okuyan her uygulamadan bunu ayrıca ister.":
+            "So SS+ can take screenshots and record video. macOS requires this separately from every app that reads the screen.",
+        "Yalnızca video kaydında \"Mikrofonu kaydet\" seçeneğini açarsan kullanılır. Kapalıyken mikrofona hiç dokunulmaz.":
+            "Used only if you turn on \"Record microphone\" for a video recording. While it is off, the microphone is never touched.",
+        "İzni verdikten sonra yeniden başlat": "Restart after granting",
+        "macOS ekran kaydı iznini ancak uygulama yeniden başlatıldığında tanır. Anahtarı açtıysan tek eksik bu.":
+            "macOS only recognises screen recording permission after the app restarts. If you have already turned the switch on, this is the only step left.",
+        "Yeniden Başlat": "Restart",
+        "Sistem Ayarları'nda anahtar açık görünmesine rağmen yakalama çalışmıyorsa eski izin kaydını siler.":
+            "Clears the stale permission record when capture still fails even though the switch looks on in System Settings.",
+        "SS+'ın istediği bütün izinleri tek listede gösterir; durumları oradan görülür ve verilebilir.":
+            "Shows every permission SS+ asks for in one list, with its status, and lets you grant it there.",
+
+        // Drive ana anahtarı
+        "Yakalananları Google Drive'a gönder": "Send captures to Google Drive",
+        "Kapalıyken hiçbir dosya yüklenmez. Hesabın bağlı kalır; yeniden açtığında kaldığın yerden devam eder.":
+            "Nothing is uploaded while this is off. Your account stays connected, so turning it back on picks up where you left off.",
+
         // Genel
         "Tamam": "OK",
         "Vazgeç": "Cancel",

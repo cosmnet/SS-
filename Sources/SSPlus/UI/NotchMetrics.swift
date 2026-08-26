@@ -30,6 +30,55 @@ struct NotchMetrics: Equatable {
     /// Çentiğin alt kenarı: açılan panelin İÇERİĞİ daima bu çizginin altındadır.
     var notchBottomY: CGFloat { notchRect.minY }
 
+    /// Çentiğin ALT köşelerinin yarıçapı.
+    ///
+    /// Fiziksel çentiğin alt köşeleri yuvarlaktır. Ada çentiği kaplayıp iki yana
+    /// taştığı için bu yarıçap, gövdenin çentik oyuğuna oturan iç köşelerinde
+    /// kullanılır; tutmadığında çentiğin kenarında ince bir "basamak" görünür.
+    /// Ölçü punto cinsindendir ve çentik yüksekliğiyle orantılıdır (Apple'ın
+    /// bütün çentikli modellerinde oran neredeyse aynıdır).
+    var notchCornerRadius: CGFloat {
+        guard hasNotch else { return 0 }
+        return min(max(notchRect.height * 0.28, 4), 10).rounded()
+    }
+
+    /// Ölçülen çentiğin hangi MacBook ailesine denk geldiği.
+    ///
+    /// Yerleşim tamamen dinamik ölçüme dayanır; bu sınıflandırma yalnızca kanat
+    /// genişliği gibi tasarım kararlarını modele göre ayarlamak ve ölçüm saçma
+    /// bir değer verdiğinde makul bir değere çekmek için kullanılır.
+    enum Family: String {
+        /// 13"/15" MacBook Air (M2–M4) — görece dar çentik.
+        case air = "MacBook Air"
+        /// 14"/16" MacBook Pro (M1 Pro ve sonrası) — geniş çentik.
+        case pro = "MacBook Pro"
+        /// Çentikli ama tanınmayan bir model (yeni donanım / sıra dışı çözünürlük).
+        case unknown = "Çentikli Mac"
+    }
+
+    /// Çentik genişliğinin ekran genişliğine oranından model ailesini kestirir.
+    ///
+    /// Oran kullanılır çünkü kullanıcı çözünürlüğü ("Daha Fazla Alan" vb.)
+    /// değiştirdiğinde punto ölçüleri değişir ama oran sabit kalır:
+    ///   14"/16" Pro  → ~0.107   (1728 pt ekranda 185 pt çentik)
+    ///   13"/15" Air  → ~0.117
+    var family: Family {
+        guard hasNotch, screenFrame.width > 1 else { return .unknown }
+        let ratio = notchRect.width / screenFrame.width
+        switch ratio {
+        case ..<0.113: return .pro
+        case ..<0.128: return .air
+        default:       return .unknown
+        }
+    }
+
+    /// Çentiğin iki yanında kalan boş menü çubuğu şeridinin genişliği.
+    /// Ada kanatları bu genişliği aşarsa ekrandan taşar.
+    var availableWingWidth: CGFloat {
+        guard hasNotch else { return 0 }
+        return min(notchRect.minX - screenFrame.minX, screenFrame.maxX - notchRect.maxX)
+    }
+
     /// Ekran hiç bulunamadığında kullanılacak nötr ölçü.
     static let fallback = NotchMetrics(screenFrame: .zero, notchRect: .zero, menuBarHeight: 24)
 

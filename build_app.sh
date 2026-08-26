@@ -152,12 +152,32 @@ if [[ -z "$SIGN_ID" ]] && print -r -- "$IDENTITIES" | grep -q '"SS+ Local Signin
   SIGN_ID="SS+ Local Signing"
 fi
 
+ENTITLEMENTS="Resources/SSPlus.entitlements"
+
+# İç içe kod (Frameworks/*.dylib) dıştan içe doğru ayrı ayrı imzalanır.
+# `--deep` Apple tarafından önerilmiyor ve notarizasyonda sorun çıkarabiliyor.
+sign_bundle() {
+  local id="$1"; shift
+  local extra=("$@")
+  for lib in "${BUNDLE}"/Contents/Frameworks/*.dylib(N); do
+    codesign --force --sign "$id" "${extra[@]}" "$lib"
+  done
+  codesign --force --sign "$id" "${extra[@]}" "$BUNDLE"
+}
+
 if [[ -n "$SIGN_ID" ]]; then
   echo "  Kararlı kimlik bulundu: ${SIGN_ID}"
-  codesign --force --deep --sign "$SIGN_ID" "$BUNDLE"
+  if [[ "$SIGN_ID" == "Developer ID Application:"* ]]; then
+    # Dağıtım imzası: notarizasyon Hardened Runtime + güvenli zaman damgası ister.
+    echo "  Hardened Runtime + zaman damgası uygulanıyor (notarizasyona hazır)."
+    sign_bundle "$SIGN_ID" --options runtime --timestamp --entitlements "$ENTITLEMENTS"
+  else
+    # Yerel geliştirme imzası: zaman damgası için ağa çıkma, runtime'ı zorlama.
+    sign_bundle "$SIGN_ID" --timestamp=none
+  fi
   echo "  ✓ Kimlik sabit olduğu için Ekran Kaydı izni yeniden derlemelerden sonra da korunur."
 else
-  codesign --force --deep --sign - "$BUNDLE"
+  sign_bundle - --timestamp=none
   echo "  ⚠︎ Kararlı imzalama kimliği bulunamadı; geçici (ad-hoc) imza kullanıldı."
   echo "     macOS izinleri imza kimliğine bağladığı için her yeniden derlemede"
   echo "     SS+ yeni bir uygulama sayılır ve Ekran Kaydı izni geçersiz kalır."

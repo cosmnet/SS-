@@ -43,9 +43,10 @@ enum PermissionManager {
     /// bloke edilmez.
     static func prepareAtLaunch() {
         guard !hasScreenCapturePermission else { return }
-        DispatchQueue.global(qos: .userInitiated).async {
-            _ = CGRequestScreenCaptureAccess()
-        }
+        // Ham sistem penceresini doğrudan tetiklemek yerine, bütün izinleri
+        // gerekçeleriyle birlikte tek ekranda gösteren pencereyi aç. Kullanıcı
+        // ne istendiğini görmeden onay penceresiyle karşılaşmaz.
+        PermissionsWindowController.shared.showIfNeededAtLaunch()
     }
 
     // MARK: - Kapı
@@ -65,7 +66,8 @@ enum PermissionManager {
         return false
     }
 
-    /// Ekran kaydı izni uyarısı. Oturumda yalnızca bir kez açılır.
+    /// İzin eksikken yakalama denendiğinde: tek ekranlı izin penceresini aç.
+    /// Oturumda yalnızca bir kez; sonraki denemelerde kısa bir uyarı sesi.
     static func presentPermissionAlert() {
         guard !alertOnScreen else { return }
         guard !alertShownThisSession else {
@@ -73,6 +75,16 @@ enum PermissionManager {
             return
         }
         alertShownThisSession = true
+        PermissionsWindowController.shared.show()
+    }
+
+    /// Bozuk TCC kaydı için eski, ayrıntılı onarım uyarısı.
+    ///
+    /// Artık kendiliğinden açılmaz — yalnızca kullanıcı Ayarlar'daki onarım
+    /// yolunu seçtiğinde gösterilir. Anahtar "açık" göründüğü hâlde iznin
+    /// çalışmadığı (imza değişimi sonrası) durumun tek çözümü budur.
+    static func presentRepairAlert() {
+        guard !alertOnScreen else { return }
         alertOnScreen = true
         defer { alertOnScreen = false }
 
@@ -126,6 +138,18 @@ enum PermissionManager {
         let candidates = [
             "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_ScreenCapture",
             "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+        ]
+        for string in candidates {
+            guard let url = URL(string: string) else { continue }
+            if NSWorkspace.shared.open(url) { return }
+        }
+    }
+
+    /// Sistem Ayarları'nı Mikrofon bölümünde açar.
+    static func openMicrophoneSettings() {
+        let candidates = [
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Microphone",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
         ]
         for string in candidates {
             guard let url = URL(string: string) else { continue }

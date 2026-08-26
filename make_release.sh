@@ -113,9 +113,49 @@ hdiutil convert "$TMP_DMG" -format UDZO -imagekey zlib-level=9 -o "$DMG" >/dev/n
 rm -f "$TMP_DMG"
 rm -rf "$STAGE"
 
+# 4) DMG imzası + notarizasyon
+#
+# Gatekeeper, indirilen (karantinalı) bir uygulamayı ancak Developer ID ile
+# imzalı VE Apple tarafından noterlenmişse açar. Apple Development ya da
+# kendinden imzalı sertifikalar yetmez — kullanıcı "uygulama açılamadı" alır.
+#
+# Notarizasyon için bir kerelik kimlik kaydı gerekir (şifre burada saklanmaz,
+# Anahtar Zinciri'ne gider):
+#   xcrun notarytool store-credentials ssplus-notary \
+#     --apple-id <apple-id> --team-id <TEAM_ID> --password <uygulamaya-özel-şifre>
+# Uygulamaya özel şifre: https://appleid.apple.com → Oturum Açma ve Güvenlik.
+NOTARY_PROFILE="${NOTARY_PROFILE:-ssplus-notary}"
+
 SIGN_ID="$(security find-identity -v -p codesigning 2>/dev/null | sed -n 's/.*"\(Developer ID Application:[^"]*\)".*/\1/p' | head -1)"
-if [[ -n "$SIGN_ID" ]]; then
-  codesign --force --sign "$SIGN_ID" "$DMG"
+if [[ -z "$SIGN_ID" ]]; then
+  echo ""
+  echo "  ⚠︎ Developer ID Application sertifikası bulunamadı; DMG imzalanmadı ve"
+  echo "     noterlenmedi. Bu paketi indiren herkes "uygulama açılamadı" uyarısı alır."
+  echo "     Sertifika: Xcode → Settings → Accounts → hesabını seç → Manage"
+  echo "     Certificates → + → Developer ID Application (Account Holder/Admin yetkisi şart)."
+else
+  echo "▶︎ DMG imzalanıyor: ${SIGN_ID}"
+  codesign --force --timestamp --sign "$SIGN_ID" "$DMG"
+
+  if ! xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1; then
+    echo ""
+    echo "  ⚠︎ Notarizasyon profili '${NOTARY_PROFILE}' kayıtlı değil; DMG imzalandı"
+    echo "     ama noterlenmedi. Tek seferlik kayıt için:"
+    echo "       xcrun notarytool store-credentials ${NOTARY_PROFILE} \\"
+    echo "         --apple-id <apple-id> --team-id <TEAM_ID> --password <uygulamaya-özel-şifre>"
+  else
+    echo "▶︎ Apple'a noterlenmek üzere gönderiliyor (birkaç dakika sürebilir)…"
+    if xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait; then
+      # Bileti DMG'ye işle: böylece kullanıcı çevrimdışıyken de doğrulanabilir.
+      xcrun stapler staple "$DMG"
+      echo "  ✓ Noterlendi ve bilet işlendi."
+      spctl -a -vvv -t open --context context:primary-signature "$DMG" 2>&1 | sed 's/^/     /'
+    else
+      echo "  ✗ Notarizasyon başarısız. Ayrıntı için:"
+      echo "     xcrun notarytool log <submission-id> --keychain-profile ${NOTARY_PROFILE}"
+      exit 1
+    fi
+  fi
 fi
 
 echo ""

@@ -72,18 +72,26 @@ final class IslandController {
         static let plainSelecting = CGSize(width: 480, height: 54)
         static let plainRecording = CGSize(width: 340, height: 50)
 
-        // Çentikli Mac'ler: panel çentiğin ALTINA doğru büyür.
-        // Genişlikler asgarîdir; çentikten dar olamazlar.
-        static let expandedWidth: CGFloat = 520
-        static let selectingWidth: CGFloat = 520
-        static let recordingWidth: CGFloat = 320
-        /// Sistem sesi düzeyi göstergesi için kayıt çubuğuna eklenen genişlik.
-        static let audioMeterExtra: CGFloat = 96
+        // Çentikli Mac'ler: ada çentiği KAPLAR ve iki yana taşar. İçerik
+        // çentiğin solunda ve sağında kalan "kanatlara" yerleşir; çentiğin
+        // kendisine denk gelen orta oyukta hiçbir şey çizilmez (orası fiziksel
+        // olarak kamera muhafazası — oraya çizilen her şey görünmez olur).
+        //
+        // Kanat genişliği çentiğin BİR yanı içindir; panel genişliği
+        // çentik + 2 × kanat olur, böylece gövde çentiğe göre simetriktir.
+        static let expandedWing: CGFloat = 200
+        static let selectingWing: CGFloat = 236
+        static let recordingWing: CGFloat = 168
+        /// Sistem sesi düzeyi göstergesi kayıt hâlinde iki kanadı da genişletir.
+        static let audioMeterExtra: CGFloat = 52
+        /// Kanadın ekran kenarına bırakması gereken en küçük pay.
+        static let wingEdgeInset: CGFloat = 10
 
-        /// Çentiğin ALTINA inen içerik yüksekliği.
+        /// Çentiğin ALTINA inen ek içerik yüksekliği. Seçim ve kayıt hâlleri
+        /// tümüyle kanatlara sığar; yalnızca açık ada aşağı sarkar.
         static let expandedDrop: CGFloat = 190
-        static let selectingDrop: CGFloat = 52
-        static let recordingDrop: CGFloat = 46
+        static let selectingDrop: CGFloat = 0
+        static let recordingDrop: CGFloat = 0
     }
 
     /// Açılışta çağrılır: gözlemcileri kurar; paneli yalnızca görünmesi gerektiğinde
@@ -290,18 +298,18 @@ final class IslandController {
             return m.notchRect
         }
 
-        let minWidth: CGFloat
+        let bleed = IslandLayout.topBleed
+        let wing = Self.wingWidth(for: phase, metrics: m)
         let drop: CGFloat
         switch phase {
-        case .idle:      minWidth = Layout.expandedWidth;  drop = Layout.expandedDrop
-        case .selecting: minWidth = Layout.selectingWidth; drop = Layout.selectingDrop
-        case .recording:
-            minWidth = Layout.recordingWidth + (AppState.shared.recordingAudioActive ? Layout.audioMeterExtra : 0)
-            drop = Layout.recordingDrop
+        case .idle:      drop = Layout.expandedDrop
+        case .selecting: drop = Layout.selectingDrop
+        case .recording: drop = Layout.recordingDrop
         }
 
-        let bleed = IslandLayout.topBleed
-        let width = max(minWidth, m.notchRect.width).rounded()
+        // Panel çentiği ortalar: genişlik = çentik + iki kanat. Yatay merkez
+        // ekranın değil ÇENTİĞİN merkezidir (ikisi yarım punto kayıktır).
+        let width = (m.notchRect.width + wing * 2).rounded()
         let height = (m.notchRect.height + bleed + drop).rounded()
         return CGRect(
             x: (m.notchRect.midX - width / 2).rounded(),
@@ -309,6 +317,28 @@ final class IslandController {
             width: width,
             height: height
         )
+    }
+
+    /// Çentiğin bir yanındaki kanat genişliği.
+    ///
+    /// İstenen genişlik ekranda gerçekten boş olan şeritten (`availableWingWidth`)
+    /// taşamaz; taşarsa kırpılır. Böylece dar çentikli / küçük ekranlı modellerde
+    /// ada ekran dışına sarkmaz.
+    static func wingWidth(for phase: AppState.Phase, metrics m: NotchMetrics) -> CGFloat {
+        var wanted: CGFloat
+        switch phase {
+        case .idle:      wanted = Layout.expandedWing
+        case .selecting: wanted = Layout.selectingWing
+        case .recording:
+            wanted = Layout.recordingWing
+            if AppState.shared.recordingAudioActive { wanted += Layout.audioMeterExtra }
+        }
+        // MacBook Air'ın çentiği görece geniş, kanatları dardır; birkaç punto
+        // daha sıkı bir yerleşim taşmayı önler.
+        if m.family == .air { wanted -= 8 }
+        let room = m.availableWingWidth - Layout.wingEdgeInset
+        guard room > 0 else { return wanted }
+        return min(wanted, room).rounded()
     }
 
     private func refreshFrame() {
@@ -441,18 +471,18 @@ struct IslandView: View {
         .compatAnimation(.spring(response: 0.34, dampingFraction: 0.86), value: layoutKey)
     }
 
-    /// Çentiğin altına sarkan gövde: üst kenarı çentiğin alt kenarına yapışık
-    /// olduğu için üst köşeler DÜZ, alt köşeler yuvarlaktır. Siyah gövde fiziksel
-    /// çentikle kesintisiz birleşir.
+    /// Çentiği KAPLAYAN gövde: üst kenarı ekranın tepesine yapışıktır (üst
+    /// köşeler düz), alt köşeler yuvarlaktır. Siyah gövde fiziksel çentikle
+    /// kesintisiz birleşir; çentiğin iki yanındaki menü çubuğu şeridi adanın
+    /// kanatlarıyla örtülür.
     ///
-    /// Kontur YOK: üst kenardaki 0.5 punto beyaz saç teli, çentiğin alt sınırında
-    /// yatay bir çizgi olarak menü çubuğuna taşar ve hizasızlık izlenimi verirdi.
-    /// Gölge de aşağı yönlüdür (yarıçap < kaydırma) — böylece menü çubuğunun
-    /// üzerine karanlık bir hâle düşmez.
-    private var descendingShape: some View {
-        BottomRoundedRectangle(radius: 22)
-        .fill(Color.black)
-        .shadow(color: .black.opacity(0.38), radius: 10, y: 8)
+    /// Kontur YOK: 0.5 punto beyaz saç teli, gövdenin çentikle birleştiği yerde
+    /// görünür bir çizgi bırakır ve hizasızlık izlenimi verir. Gölge aşağı
+    /// yönlüdür (yarıçap < kaydırma) — menü çubuğunun üzerine hâle düşmez.
+    private var coveringShape: some View {
+        BottomRoundedRectangle(radius: isExpandedIdle ? 22 : 16)
+            .fill(Color.black)
+            .shadow(color: .black.opacity(0.38), radius: 10, y: 8)
     }
 
     /// Çentiksiz Mac'lerde menü çubuğunun altında duran serbest ada.
@@ -474,49 +504,127 @@ struct IslandView: View {
         return false
     }
 
-    /// Panelin üstündeki ölü bölge: taşma payı + çentik yüksekliği. Burada hiçbir
-    /// şey çizilmez; fiziksel çentik ve iki yanındaki menü çubuğu olduğu gibi
-    /// görünür. Gövde tam olarak çentiğin alt kenarından başlar.
-    private var deadZoneHeight: CGFloat {
-        isCollapsedIdle ? metrics.notchHeight : metrics.notchHeight + IslandLayout.topBleed
+    /// Panelin ekranın üst kenarından yukarı taşan payı. Burada hiçbir şey
+    /// çizilmez; içerik bu kadar aşağı itilir ki çentikle arada dikiş kalmasın.
+    private var topBleedHeight: CGFloat {
+        isCollapsedIdle ? 0 : IslandLayout.topBleed
     }
 
     private var notchedBody: some View {
-        VStack(spacing: 0) {
-            Color.clear
-                .frame(height: deadZoneHeight)
-                .allowsHitTesting(false)
+        Group {
+            if isCollapsedIdle {
+                // KAPALI: panel birebir çentik boyundadır ve hiçbir şey
+                // çizilmez; ada çentiğe karışıp tümüyle görünmez olur.
+                Color.clear
+            } else {
+                VStack(spacing: 0) {
+                    Color.clear
+                        .frame(height: topBleedHeight)
+                        .allowsHitTesting(false)
 
-            notchedContent
+                    // Çentik şeridi: içerik yalnızca iki kanatta.
+                    notchRow
+                        .frame(height: metrics.notchHeight)
+
+                    // Yalnızca açık adada: çentiğin altına sarkan bölüm.
+                    if isExpandedIdle {
+                        notchedDrop
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .background(coveringShape)
+                .transition(app.phase.isSelecting ? .islandPop : .islandDescend)
+            }
         }
         .contentShape(Rectangle())
         .onTapGesture { IslandController.shared.pinned = true }
     }
 
+    private var isExpandedIdle: Bool {
+        if case .idle = app.phase { return ui.expanded }
+        return false
+    }
+
+    /// Çentik hizasındaki satır. Ortadaki oyuk BİREBİR çentik genişliğindedir ve
+    /// boş bırakılır; içerik yalnızca soldaki ve sağdaki kanatlara yerleşir.
     @ViewBuilder
-    private var notchedContent: some View {
+    private var notchRow: some View {
+        HStack(spacing: 0) {
+            wing(alignment: .leading) { leftWingContent }
+
+            // ÇENTİK OYUĞU — buraya hiçbir şey çizilmez.
+            Color.clear
+                .frame(width: metrics.notchWidth)
+                .allowsHitTesting(false)
+
+            wing(alignment: .trailing) { rightWingContent }
+        }
+    }
+
+    private func wing<Content: View>(
+        alignment: Alignment,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+            .padding(alignment == .leading ? .leading : .trailing, 13)
+            .clipped()
+    }
+
+    @ViewBuilder
+    private var leftWingContent: some View {
         switch app.phase {
         case .idle:
-            if ui.expanded {
-                expandedContent
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .background(descendingShape)
-                    .transition(.islandDescend)
-            } else {
-                // KAPALI: hiçbir şey çizilmez. Panel zaten birebir çentik
-                // boyundadır; ada çentiğe karışır ve tümüyle görünmez olur.
-                Color.clear
+            HStack(spacing: 7) {
+                SSPlusLogoView(size: 16)
+                Text("SS+")
+                    .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                if pro.isPro { proBadge }
             }
         case let .selecting(mode, style):
-            selectingRow(mode: mode, style: style)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(descendingShape)
-                .transition(.islandPop)
+            selectingLeading(mode: mode, style: style)
         case .recording:
-            recordingRow
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(descendingShape)
-                .transition(.islandDescend)
+            HStack(spacing: 8) {
+                PulsingDot()
+                Text(app.recordingTimeString)
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.white)
+                if app.recordingAudioActive {
+                    AudioLevelMeter(level: app.audioLevel, mic: app.recordingMicActive)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var rightWingContent: some View {
+        switch app.phase {
+        case .idle:
+            settingsButton
+        case let .selecting(mode, style):
+            selectingTrailing(mode: mode, style: style)
+        case .recording:
+            HStack(spacing: 8) {
+                drawToggleButton
+                stopButton(compact: true)
+            }
+        }
+    }
+
+    /// Açık adanın çentik altına sarkan bölümü: araç sırası + pano şeridi.
+    private var notchedDrop: some View {
+        VStack(spacing: 0) {
+            toolRow
+                .padding(.horizontal, 14)
+                .padding(.top, 10)
+
+            ClipboardStripView()
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+                .padding(.bottom, 10)
         }
     }
 
@@ -586,22 +694,6 @@ struct IslandView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 10)
         }
-    }
-
-    // Kayıt çubuğu: nabız + süre + çizim + Durdur, çentiğin hemen ALTINDA
-    // tek sıra hâlinde.
-    private var recordingRow: some View {
-        HStack(spacing: 9) {
-            PulsingDot()
-            Text(app.recordingTimeString)
-                .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                .foregroundColor(.white)
-            if app.recordingAudioActive { AudioLevelMeter(level: app.audioLevel, mic: app.recordingMicActive) }
-            Spacer(minLength: 6)
-            drawToggleButton
-            stopButton(compact: true)
-        }
-        .padding(.horizontal, 14)
     }
 
     private var plainRecording: some View {
@@ -705,6 +797,38 @@ struct IslandView: View {
     }
 
     // MARK: Seçim satırı
+
+    /// Çentikli yerleşimde seçim ipucunun SOL kanada düşen yarısı: ne yapılacağı.
+    @ViewBuilder
+    private func selectingLeading(mode: SelectionMode, style: SelectionStyle) -> some View {
+        if style == .recording {
+            CompatLabel(title: L("Kayıt alanı seç"), systemImage: "record.circle")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.red)
+        } else {
+            Text(mode.hint)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.white)
+        }
+    }
+
+    /// SAĞ kanat: kip düğmeleri ve çıkış ipucu.
+    @ViewBuilder
+    private func selectingTrailing(mode: SelectionMode, style: SelectionStyle) -> some View {
+        HStack(spacing: 7) {
+            if style == .recording {
+                Text(L("↩ tüm ekran"))
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.5))
+            } else {
+                hudModeChip("R", L("Alan"), active: mode == .rect) { switchMode(.rect) }
+                hudModeChip("W", L("Pencere"), active: mode == .window) { switchMode(.window) }
+            }
+            Text(L("Esc"))
+                .font(.system(size: 10.5))
+                .foregroundColor(.white.opacity(0.4))
+        }
+    }
 
     private func selectingRow(mode: SelectionMode, style: SelectionStyle) -> some View {
         HStack(spacing: 10) {

@@ -57,6 +57,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = RecordingDrawController.shared   // ✏️ bildirimi gözlemcisi kurulsun
         reloadHotKeys()
         observeHotkeySettings()
+        // Destek/geliştirme için: izin ekranını doğrudan açar.
+        if arguments.contains("--permissions") {
+            PermissionsWindowController.shared.show()
+        }
         if !exporting {
             PermissionManager.prepareAtLaunch()
             applyLoginItemDefault()

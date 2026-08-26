@@ -10,6 +10,12 @@ final class AppState: ObservableObject {
         case idle
         case selecting(SelectionMode, SelectionStyle)
         case recording
+        /// Seçim hâli mi? (Ada geçişini yaylı "pop" ile oynatmak için.)
+        var isSelecting: Bool {
+            if case .selecting = self { return true }
+            return false
+        }
+
     }
 
     @Published var phase: Phase = .idle

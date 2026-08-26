@@ -26,6 +26,43 @@ enum UIShotExport {
         AppState.shared.phase = .idle
         AppState.shared.recordingSeconds = 0
 
+        // --- Çentikli yerleşim -------------------------------------------
+        // Bu makinenin GERÇEK çentik ölçüleriyle çizilir: kanatların çentiğin
+        // iki yanına doğru oturduğu ve orta oyuğun boş kaldığı buradan görülür.
+        let notch = NotchMetrics.primary()
+        if notch.hasNotch {
+            IslandController.shared.ui.metrics = notch
+            let bleed = IslandLayout.topBleed
+
+            func notchedSize(_ phase: AppState.Phase, drop: CGFloat) -> CGSize {
+                let wing = IslandController.wingWidth(for: phase, metrics: notch)
+                return CGSize(
+                    width: notch.notchWidth + wing * 2,
+                    height: notch.notchHeight + bleed + drop
+                )
+            }
+
+            IslandController.shared.ui.expanded = true
+            snap(IslandView(), size: notchedSize(.idle, drop: 190),
+                 name: "ui-island-notch-expanded", in: directory, backdrop: chroma)
+
+            AppState.shared.phase = .selecting(.rect, .screenshot)
+            snap(IslandView(), size: notchedSize(AppState.shared.phase, drop: 0),
+                 name: "ui-island-notch-selecting", in: directory, backdrop: chroma)
+
+            AppState.shared.phase = .recording
+            AppState.shared.recordingSeconds = 12
+            AppState.shared.recordingAudioActive = true
+            AppState.shared.audioLevel = 0.6
+            snap(IslandView(), size: notchedSize(.recording, drop: 0),
+                 name: "ui-island-notch-recording", in: directory, backdrop: chroma)
+
+            AppState.shared.phase = .idle
+            AppState.shared.recordingSeconds = 0
+            AppState.shared.recordingAudioActive = false
+            IslandController.shared.ui.metrics = .fallback
+        }
+
         let panelModel = StatusPanelController.shared.model
         panelModel.tab = .files
         snap(StatusPanelView(model: panelModel, controller: nil), size: CGSize(width: 300, height: 392), name: "ui-status-files", in: directory, backdrop: chroma)
@@ -33,6 +70,8 @@ enum UIShotExport {
         snap(StatusPanelView(model: panelModel, controller: nil), size: CGSize(width: 300, height: 392), name: "ui-status-images", in: directory, backdrop: chroma)
         panelModel.tab = .clipboardTexts
         snap(StatusPanelView(model: panelModel, controller: nil), size: CGSize(width: 300, height: 392), name: "ui-status-texts", in: directory, backdrop: chroma)
+
+        snap(PermissionsView(), size: CGSize(width: 520, height: 440), name: "ui-permissions", in: directory, backdrop: .windowBackgroundColor)
 
         snap(SettingsView(tab: .general), size: CGSize(width: 520, height: 420), name: "ui-settings-general", in: directory, backdrop: .windowBackgroundColor)
         snap(SettingsView(tab: .output), size: CGSize(width: 520, height: 420), name: "ui-settings-output", in: directory, backdrop: .windowBackgroundColor)

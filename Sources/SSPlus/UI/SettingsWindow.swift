@@ -317,12 +317,31 @@ struct GeneralTab: View {
                 Toggle(L("Güncellemeleri otomatik denetle"), isOn: $settings.checkUpdatesAutomatically)
                     .toggleStyle(.checkbox)
                 Spacer()
+                Button(L("Çentik hizasını göster")) { NotchAlignmentTest.run() }
+                    .compatHelp(L("Uygulamanın çentiği nerede sandığını 5 saniyeliğine ekrana çizer. Ada kaymış görünüyorsa buradan doğrulanır."))
+                Button(L("İzinler…")) { PermissionsWindowController.shared.show() }
+                    .compatHelp(L("SS+'ın istediği bütün izinleri tek listede gösterir; durumları oradan görülür ve verilebilir."))
                 Button(L("Web sitesi")) { NSWorkspace.shared.open(SiteLinks.home) }
                 Button(L("Kaldır / İzinleri sıfırla…")) { Uninstaller.present() }
                     .compatHelp(L("İzin sorunlarında ya da temiz kurulum için: macOS'taki SS+ izin kayıtlarını (Ekran Kaydı vb.) siler. İstersen ayarları ve Google oturumunu da kaldırıp uygulamayı Çöp'e taşır."))
             }
             .controlSize(.small)
+
+            // Ada yerleşimiyle ilgili destek istekleri neredeyse hep ölçüm
+            // sorunudur; ölçüyü kullanıcıya göstermek yazışmayı tek adıma
+            // indiriyor.
+            caption(notchDiagnostics)
         }
+    }
+
+    /// Ekranın çentik ölçüsünün tek satırlık özeti.
+    private var notchDiagnostics: String {
+        let m = NotchMetrics.primary()
+        guard m.hasNotch else {
+            return L("Bu ekranda çentik yok — ada menü çubuğunun altında serbest durur.")
+        }
+        return L("Algılanan: %@ · çentik %d × %d pt · ada çentiği kaplar, içerik iki yana yerleşir.",
+                 m.family.rawValue, Int(m.notchWidth), Int(m.notchHeight))
     }
 
     // MARK: Google Drive
@@ -331,70 +350,100 @@ struct GeneralTab: View {
     private var driveSection: some View {
         if !auth.isConfigured {
             caption(L("Bu derlemede Google istemci kimliği yok (Resources/GoogleOAuth.plist). Kurulum için README'ye bak."))
-        } else if !auth.isSignedIn {
-            HStack(spacing: 10) {
-                Button(L("Google ile oturum aç")) { signInToGoogle() }
-                    .disabled(auth.isSigningIn)
-                if auth.isSigningIn {
-                    CompatSpinner()
-                    caption(L("Tarayıcıda Google onayı bekleniyor…"))
-                }
-                Spacer()
-            }
-            caption(L("Kendi hesabınla oturum açarsın; belirteçler yalnızca bu Mac'te tutulur."))
-            if let driveError {
-                CompatLabel(title: driveError, systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11))
-                    .foregroundColor(.red)
-            }
         } else {
-            HStack(spacing: 8) {
-                SymbolImage(name: "person.crop.circle.fill.badge.checkmark")
-                    .foregroundColor(.green)
-                Text(auth.accountEmail ?? "")
-                    .font(.system(size: 12, weight: .medium))
-                Spacer()
-                Button(L("Gizlilik politikası")) { NSWorkspace.shared.open(SiteLinks.privacy) }
-                    .buttonStyle(.link)
-                    .font(.system(size: 11))
-                Button(L("Çıkış yap")) { Task { await auth.signOut() } }
-                    .controlSize(.small)
+            // ANA ANAHTAR — her durumda görünür ve tek tıkla kapatılır.
+            // Kapatmak oturumu KAPATMAZ: yükleme durur, hesap bağlı kalır ve
+            // tekrar açıldığında yeniden oturum açmak gerekmez.
+            Toggle(L("Yakalananları Google Drive'a gönder"), isOn: driveEnabledBinding)
+                .toggleStyle(SwitchToggleStyle())
+            caption(L("Kapalıyken hiçbir dosya yüklenmez. Hesabın bağlı kalır; yeniden açtığında kaldığın yerden devam eder."))
+
+            if settings.driveUploadEnabled {
+                if !auth.isSignedIn {
+                    driveSignInRow
+                } else {
+                    driveConnectedRows
+                }
             }
-            rowDivider()
-            HStack(spacing: 16) {
-                Toggle(L("Ekran görüntülerini Drive'a yükle"), isOn: $settings.driveUploadEnabled)
-                    .toggleStyle(.checkbox)
-                Toggle(L("Video kayıtlarını da yükle"), isOn: $settings.driveUploadVideos)
-                    .toggleStyle(.checkbox)
-                    .disabled(!settings.driveUploadEnabled)
-                Spacer()
+        }
+    }
+
+    /// Ana anahtar. Açılırken oturum yoksa Google onayını kendiliğinden başlatır;
+    /// kullanıcı vazgeçerse anahtar geri kapanır (yanlış "açık" izlenimi kalmasın).
+    private var driveEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { settings.driveUploadEnabled },
+            set: { on in
+                settings.driveUploadEnabled = on
+                if on, !auth.isSignedIn, !auth.isSigningIn { signInToGoogle() }
             }
-            HStack(spacing: 16) {
-                Toggle(L("Bağlantıyla herkese açık paylaş"), isOn: $settings.driveShareAnyone)
-                    .toggleStyle(.checkbox)
-                Toggle(L("Linki panoya kopyala"), isOn: $settings.driveCopyLink)
-                    .toggleStyle(.checkbox)
-                    .disabled(!settings.driveShareAnyone)
-                Spacer()
+        )
+    }
+
+    @ViewBuilder
+    private var driveSignInRow: some View {
+        HStack(spacing: 10) {
+            Button(L("Google ile oturum aç")) { signInToGoogle() }
+                .disabled(auth.isSigningIn)
+            if auth.isSigningIn {
+                CompatSpinner()
+                caption(L("Tarayıcıda Google onayı bekleniyor…"))
             }
-            rowDivider()
-            HStack(spacing: 8) {
-                fieldLabel(L("Klasör"))
-                TextField("SS+", text: $settings.driveFolderName, onCommit: { renameDriveFolder() })
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 12))
-                    .frame(maxWidth: 200)
-                Button(L("Drive'da aç")) { openDriveFolder() }
-                    .controlSize(.small)
-                    .disabled(driveBusy)
-                    .compatHelp(L("Klasör Drive'ının kökünde oluşturulur; sonra Drive'da istediğin yere taşıyabilir ya da adını değiştirebilirsin — yüklemeler onu izlemeye devam eder."))
-                Spacer()
-            }
-            if let driveError {
-                CompatLabel(title: driveError, systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11))
-                    .foregroundColor(.red)
-            }
+            Spacer()
+        }
+        caption(L("Kendi hesabınla oturum açarsın; belirteçler yalnızca bu Mac'te tutulur."))
+        if let driveError {
+            CompatLabel(title: driveError, systemImage: "exclamationmark.triangle.fill")
+                .font(.system(size: 11))
+                .foregroundColor(.red)
+        }
+    }
+
+    @ViewBuilder
+    private var driveConnectedRows: some View {
+        HStack(spacing: 8) {
+            SymbolImage(name: "person.crop.circle.fill.badge.checkmark")
+                .foregroundColor(.green)
+            Text(auth.accountEmail ?? "")
+                .font(.system(size: 12, weight: .medium))
+            Spacer()
+            Button(L("Gizlilik politikası")) { NSWorkspace.shared.open(SiteLinks.privacy) }
+                .buttonStyle(.link)
+                .font(.system(size: 11))
+            Button(L("Çıkış yap")) { Task { await auth.signOut() } }
+                .controlSize(.small)
+        }
+        rowDivider()
+        HStack(spacing: 16) {
+            Toggle(L("Video kayıtlarını da yükle"), isOn: $settings.driveUploadVideos)
+                .toggleStyle(.checkbox)
+            Spacer()
+        }
+        HStack(spacing: 16) {
+            Toggle(L("Bağlantıyla herkese açık paylaş"), isOn: $settings.driveShareAnyone)
+                .toggleStyle(.checkbox)
+            Toggle(L("Linki panoya kopyala"), isOn: $settings.driveCopyLink)
+                .toggleStyle(.checkbox)
+                .disabled(!settings.driveShareAnyone)
+            Spacer()
+        }
+        rowDivider()
+        HStack(spacing: 8) {
+            fieldLabel(L("Klasör"))
+            TextField("SS+", text: $settings.driveFolderName, onCommit: { renameDriveFolder() })
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 12))
+                .frame(maxWidth: 200)
+            Button(L("Drive'da aç")) { openDriveFolder() }
+                .controlSize(.small)
+                .disabled(driveBusy)
+                .compatHelp(L("Klasör Drive'ının kökünde oluşturulur; sonra Drive'da istediğin yere taşıyabilir ya da adını değiştirebilirsin — yüklemeler onu izlemeye devam eder."))
+            Spacer()
+        }
+        if let driveError {
+            CompatLabel(title: driveError, systemImage: "exclamationmark.triangle.fill")
+                .font(.system(size: 11))
+                .foregroundColor(.red)
         }
     }
 
@@ -406,8 +455,11 @@ struct GeneralTab: View {
                 settings.driveUploadEnabled = true
                 try await DriveUploadCoordinator.shared.ensureFolder()
             } catch GoogleAuthError.cancelled {
-                // sessiz
+                // Kullanıcı vazgeçti: anahtar açık kalmasın, yoksa "açık ama
+                // hiçbir şey yüklenmiyor" gibi yanıltıcı bir durum doğar.
+                settings.driveUploadEnabled = false
             } catch {
+                settings.driveUploadEnabled = false
                 driveError = error.localizedDescription
             }
         }
