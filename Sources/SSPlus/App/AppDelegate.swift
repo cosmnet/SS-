@@ -30,6 +30,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             return
         }
+        if let index = arguments.firstIndex(of: "--capture-probe") {
+            let which = arguments.indices.contains(index + 1) ? arguments[index + 1] : "both"
+            Task { @MainActor in exit(await CaptureProbe.run(which)) }
+            return
+        }
         if let index = arguments.firstIndex(of: "--audio-probe") {
             let seconds = arguments.indices.contains(index + 1) ? (Double(arguments[index + 1]) ?? 5) : 5
             if #available(macOS 13, *) {

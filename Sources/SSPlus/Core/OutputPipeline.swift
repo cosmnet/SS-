@@ -71,6 +71,13 @@ enum OutputPipeline {
         // Kart gösterildikten SONRA: yükleme durumu karta işlenir. Yükleme kapalıysa
         // `data` burada son kez kullanılır ve fonksiyon bitince serbest kalır.
         DriveUploadCoordinator.shared.upload(imageData: data, mimeType: format.mimeType, localURL: url)
+
+        // Kodlama/kopyalama sırasında büyüyen ayırıcı önbelleğini (boş ama kirli
+        // sayfalar) sisteme geri ver: Activity Monitor'daki sayı gerçek kullanımı
+        // yansıtsın. Ölçüldü: canlı nesneler ~14 MB iken ayak izi 90+ MB kalıyordu.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            malloc_zone_pressure_relief(nil, 0)
+        }
     }
 
     /// Düzenleyiciden dönen sonucu VAR OLAN dosyanın üstüne yazar.
@@ -123,11 +130,12 @@ enum OutputPipeline {
     static func writeImageToPasteboard(_ data: Data, fileExtension: String) -> Int {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        let item = NSPasteboardItem()
         let isJPEG = ["jpg", "jpeg"].contains(fileExtension.lowercased())
-        item.setData(data, forType: isJPEG ? NSPasteboard.PasteboardType("public.jpeg") : .png)
-        item.setDataProvider(LazyTIFFProvider(data: data), forTypes: [.tiff])
-        pasteboard.writeObjects([item])
+        // Baytlar doğrudan yazılır; TIFF isteyen okuyucular için dönüşümü pano
+        // sunucusu kendisi yapar (NSPasteboard'un otomatik tür dönüşümleri).
+        // Veri sağlayıcı KULLANILMAZ: sağlayıcılı ögeler clearContents sonrasında
+        // da süreçte kalıp her kopyada ~15 MB biriktiriyordu (ölçüldü).
+        pasteboard.setData(data, forType: isJPEG ? NSPasteboard.PasteboardType("public.jpeg") : .png)
         return pasteboard.changeCount
     }
 

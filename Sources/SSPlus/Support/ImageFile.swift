@@ -17,28 +17,30 @@ enum ImageFile {
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 
+    /// ScreenCaptureKit'in döndürdüğü görüntü IOSurface destekli olur ve o yüzeyler
+    /// (çift tamponlu, ekran boyutunda) görüntüye tutunan HERHANGİ bir şey yüzünden
+    /// süreçte kalabilir. Yakalamayı sıradan belleğe kopyalayıp orijinali hemen
+    /// bırakırsak yüzeyler sisteme geri döner; kopya bizim akışımızla birlikte
+    /// serbest kalır (ölçüldü).
+    static func mallocBackedCopy(_ image: CGImage) -> CGImage {
+        let space = image.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
+        guard let ctx = CGContext(
+            data: nil,
+            width: image.width,
+            height: image.height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: space,
+            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+        ) else { return image }
+        ctx.interpolationQuality = .none
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        return ctx.makeImage() ?? image
+    }
+
     /// Dosyadan tam çözünürlüklü görüntü (düzenleme / OCR için, gerektiğinde).
     static func loadCGImage(_ url: URL) -> CGImage? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
         return CGImageSourceCreateImageAtIndex(source, 0, [kCGImageSourceShouldCache: false] as CFDictionary)
-    }
-}
-
-/// Panoya TIFF'i gerektiğinde üretir: yalnızca kodlanmış PNG/JPEG baytlarını tutar,
-/// böylece pano, tam çözünürlüklü NSImage/CGImage'i canlı tutmaz.
-final class LazyTIFFProvider: NSObject, NSPasteboardItemDataProvider {
-    private let data: Data
-
-    init(data: Data) {
-        self.data = data
-    }
-
-    func pasteboard(_ pasteboard: NSPasteboard?, item: NSPasteboardItem, provideDataForType type: NSPasteboard.PasteboardType) {
-        guard type == .tiff else { return }
-        autoreleasepool {
-            if let rep = NSBitmapImageRep(data: data), let tiff = rep.tiffRepresentation {
-                item.setData(tiff, forType: .tiff)
-            }
-        }
     }
 }

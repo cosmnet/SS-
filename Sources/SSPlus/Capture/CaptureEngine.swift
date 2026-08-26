@@ -52,18 +52,25 @@ enum CaptureEngine {
 
     @MainActor
     static func capture(globalRect: CGRect, screen: NSScreen) async throws -> CGImage {
+        let raw: CGImage
         if #available(macOS 14, *) {
-            return try await SCKScreenshot.capture(globalRect: globalRect, screen: screen)
+            raw = try await SCKScreenshot.capture(globalRect: globalRect, screen: screen)
+        } else {
+            raw = try LegacyCapture.capture(globalRect: globalRect, screen: screen)
         }
-        return try LegacyCapture.capture(globalRect: globalRect, screen: screen)
+        // IOSurface destekli orijinal burada bırakılır; kopya sıradan bellek.
+        return autoreleasepool { ImageFile.mallocBackedCopy(raw) }
     }
 
     @MainActor
     static func captureWindow(id: CGWindowID, fallbackRect: CGRect, screen: NSScreen) async throws -> CGImage {
+        let raw: CGImage
         if #available(macOS 14, *) {
-            return try await SCKScreenshot.captureWindow(id: id, fallbackRect: fallbackRect, screen: screen)
+            raw = try await SCKScreenshot.captureWindow(id: id, fallbackRect: fallbackRect, screen: screen)
+        } else {
+            raw = try LegacyCapture.captureWindow(id: id, fallbackRect: fallbackRect, screen: screen)
         }
-        return try LegacyCapture.captureWindow(id: id, fallbackRect: fallbackRect, screen: screen)
+        return autoreleasepool { ImageFile.mallocBackedCopy(raw) }
     }
 
     @MainActor
