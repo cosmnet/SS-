@@ -18,96 +18,93 @@
 </nav>
 
 <h1>Version history</h1>
-<p class="lead">Every release of SS+. Download the latest version from the <a href="/#download">home page</a>.</p>
+<p class="lead">What's new in each version of SS+. Get the latest from the <a href="/#download">home page</a>, or use “Check for updates” in the app.</p>
 
 <div class="rel">
   <h3>1.6.2 <time datetime="2026-08-26">26 August 2026</time></h3>
   <ul>
-    <li>Capturing SS+'s own Settings window now works in area, window and smart-window modes (it used to capture what was underneath). Transient SS+ UI — the selection overlay, island, preview card and panels — stays excluded.</li>
+    <li><strong>Fixed:</strong> taking a screenshot of SS+'s own Settings window now captures the window itself — it used to capture whatever was behind it.</li>
   </ul>
 </div>
 
 <div class="rel">
   <h3>1.6.1 <time datetime="2026-08-26">26 August 2026</time></h3>
   <ul>
-    <li>Microphone recording now works on every supported macOS version, not only 15+: on macOS 12.3–14 an AVFoundation microphone session feeds the same track; on 10.15–12.2 the legacy recorder captures the microphone too (with the live level meter).</li>
-    <li>Microphone permission is requested as soon as you turn on "Record audio", so the first recording isn't interrupted by the system prompt.</li>
-    <li>Settings explains version limits in place (system audio needs macOS 13).</li>
-    <li>Build is warning-free again; small diagnostic-code fixes.</li>
+    <li>Microphone recording now works on every Mac that SS+ supports, not only on the newest macOS.</li>
+    <li>SS+ asks for microphone access the moment you turn on audio recording, so your first recording isn't interrupted by a permission prompt.</li>
+    <li>Settings now tells you when something isn't available on your version of macOS (for example, system audio needs macOS 13).</li>
+    <li>Small fixes and polish.</li>
   </ul>
 </div>
 
 <div class="rel">
   <h3>1.6.0 <time datetime="2026-08-25">25 August 2026</time></h3>
   <ul>
-    <li>Audio recording (Pro) is now a single setting: system audio and your microphone are recorded as two separate tracks in the same file (on by default with Pro).</li>
-    <li>Live audio level meter in the island while recording, driven by the actual captured samples — all PCM formats, including 24-bit microphones.</li>
-    <li>Recording a completely static screen area no longer fails with "No frames were captured"; the file is saved with its audio.</li>
-    <li>The island is now hidden when idle by default; turn it on in Settings → General → Capture.</li>
-    <li>Builds from source take their version from the git tag, so they no longer show a false "new version available" alert.</li>
-    <li>The screen-recording permission and uninstall dialogs are now fully translated.</li>
-    <li>Developer diagnostics: <code>--audio-probe</code> / <code>--record-probe</code> and an optional debug log.</li>
+    <li><strong>Audio recording (Pro) is now one switch.</strong> Turn on “Record audio” and both your Mac's sound and your microphone are saved with the video, as two separate audio tracks you can mix or mute later. On by default with Pro.</li>
+    <li><strong>Live sound level</strong> in the island while you record, so you can see that audio is actually being picked up.</li>
+    <li><strong>Fixed:</strong> recording a screen where nothing moves could fail with “no frames captured”. Those recordings are saved now.</li>
+    <li>The island stays hidden while you're not capturing, so your notch and menu bar stay quiet. You can show it again in Settings → General.</li>
+    <li>“Check for updates” no longer shows a new-version alert when you're already up to date.</li>
+    <li>Permission and uninstall messages are now fully available in both Turkish and English.</li>
   </ul>
 </div>
 
 <div class="rel">
   <h3>1.5.0 <time datetime="2026-08-25">25 August 2026</time></h3>
   <ul>
-    <li>Runs on older Macs: minimum macOS is now 10.15 Catalina (Intel) / 11 Big Sur (Apple Silicon); the download is a universal build.</li>
-    <li>Pre-macOS 14 Macs use a CoreGraphics screenshot engine; pre-12.3 Macs record with AVFoundation (H.264 .mov, no system audio).</li>
-    <li>Launch at login works on all supported versions (LaunchAgent on macOS 10.15–12).</li>
-    <li>Interface falls back gracefully on macOS 10.15/11 (no SF Symbols or materials there); the notch island needs macOS 12+.</li>
+    <li><strong>Runs on older Macs.</strong> SS+ now works from macOS 10.15 Catalina on Intel Macs and macOS 11 Big Sur on Apple Silicon — one download for both.</li>
+    <li>Launch at login works on all supported versions.</li>
+    <li>On older versions of macOS some things look simpler (the notch island needs macOS 12 or later), but every capture and recording feature is there.</li>
   </ul>
 </div>
 
 <div class="rel">
   <h3>1.4.0 <time datetime="2026-08-25">25 August 2026</time></h3>
   <ul>
-    <li>Google Drive: reinstalling or signing in again now reuses your existing SS+ folder — no more duplicate folders.</li>
-    <li>Launch at login is on by default for new installs (Settings → General to change).</li>
-    <li>Check for updates: "You're up to date" / new-version dialog with a Version history button; automatic daily check (can be turned off).</li>
-    <li>Website with privacy policy, terms and this page; links after Google sign-in and in Settings.</li>
-    <li>App version shown in the menu-bar menu and in Settings → About.</li>
+    <li><strong>Google Drive:</strong> reinstalling SS+ or signing in again now reuses your existing SS+ folder instead of creating a new one.</li>
+    <li>SS+ starts at login by default (you can turn this off in Settings → General).</li>
+    <li><strong>Check for updates:</strong> SS+ tells you when a new version is out and can open this page. It checks once a day; you can turn that off.</li>
+    <li>New website with the privacy policy, terms and this version history; links to it after connecting Google Drive and in Settings.</li>
+    <li>The app version is shown in the menu bar menu and in Settings → About.</li>
   </ul>
 </div>
 
 <div class="rel">
   <h3>1.3.0 <time datetime="2026-08-25">25 August 2026</time></h3>
   <ul>
-    <li>Google Drive upload with your own account (drive.file scope): SS+ folder, "anyone with the link" sharing, link copied to clipboard, Drive chips on the preview card.</li>
-    <li>Optional video upload to Drive (off by default) using resumable uploads.</li>
-    <li>Uninstall / reset permissions option for a clean reinstall.</li>
-    <li>Branded "Google Drive connected" page after sign-in.</li>
-    <li>Settings redesigned: native title-bar tabs, compact two-column rows, About panel.</li>
-    <li>Stable code-signing identity so the Screen Recording permission survives updates.</li>
-    <li>Editor after capture is now off by default; new Pro activation code.</li>
+    <li><strong>Google Drive upload.</strong> Sign in with your own Google account and every screenshot goes to an SS+ folder in your Drive. Optionally share each file with “anyone with the link” and have the link copied to your clipboard automatically.</li>
+    <li>Optional upload of video recordings to Drive too (off by default).</li>
+    <li>“Uninstall / Reset permissions” in Settings for a clean reinstall.</li>
+    <li>A clearer “Google Drive connected” page after you sign in.</li>
+    <li>Redesigned Settings: tabs in the title bar and a more compact layout.</li>
+    <li><strong>Fixed:</strong> the Screen Recording permission no longer disappears after updating SS+.</li>
+    <li>The drawing editor no longer opens automatically after every capture; turn it on in Settings → General if you prefer that.</li>
   </ul>
 </div>
 
 <div class="rel">
   <h3>1.2.0 <time datetime="2026-08-25">25 August 2026</time></h3>
   <ul>
-    <li>English interface option (System / Türkçe / English), applied instantly.</li>
-    <li>Taller Settings window so tabs fit without scrolling.</li>
+    <li>English interface. Choose System, Türkçe or English in Settings → General — it applies instantly.</li>
+    <li>Taller Settings window so nothing needs scrolling.</li>
   </ul>
 </div>
 
 <div class="rel">
   <h3>1.1.0 <time datetime="2026-08-25">25 August 2026</time></h3>
   <ul>
-    <li>Recording is finalized on quit and on stream interruption — no more unplayable files.</li>
-    <li>The record shortcut and menu item now stop a recording; broken files are never reported as saved.</li>
-    <li>Clipboard history became opt-in with an "clear on quit" option; encoding moved off the main thread.</li>
-    <li>New default shortcuts ⌃⌘– / ⌃⇧⌘– (plain ⌘– hijacked "Zoom Out" everywhere); safer shortcut recorder.</li>
-    <li>Video settings exposed: container, codec, bit rate, system audio, cursor.</li>
-    <li>Release version is written into the app bundle.</li>
+    <li><strong>Fixed:</strong> quitting SS+ or a sudden interruption (display sleep, lock screen) during a recording no longer leaves you with an unplayable video — the recording is saved up to that point.</li>
+    <li><strong>Fixed:</strong> the recording shortcut and menu item now also stop a recording.</li>
+    <li>Clipboard history is now off by default and has a “clear on quit” option.</li>
+    <li>New default shortcuts: ⌃⌘– to capture, ⌃⇧⌘– to record, so ⌘– keeps working as “Zoom out” in your other apps.</li>
+    <li>New video settings: file type (MOV/MP4), quality, bit rate, system audio, and whether the cursor is included.</li>
   </ul>
 </div>
 
 <div class="rel">
   <h3>1.0.0 <time datetime="2026-08-24">24 August 2026</time></h3>
   <ul>
-    <li>First release: island interface, area/window/full-screen capture, in-place annotation editor, video recording, preview card, clipboard strip, Pro (OCR, 60 fps, system audio).</li>
+    <li>First release: the island under the notch, area / window / full-screen capture, drawing on captures, video recording, the preview card, clipboard strip, and Pro (text recognition, 60 fps, system audio).</li>
   </ul>
 </div>
 
