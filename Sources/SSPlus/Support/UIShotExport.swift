@@ -52,7 +52,7 @@ enum UIShotExport {
 
         let shot = stageImage() ?? sampleImage()
         let preview = PreviewModel()
-        preview.item = .image(shot, directory.appendingPathComponent("preview.png"), cgImage(from: shot) ?? sampleCGImage(), 2)
+        preview.item = .image(shot, directory.appendingPathComponent("preview.png"), 2)
         snap(
             PreviewCardView(model: preview, controller: nil, forceHover: true),
             size: CGSize(width: 360, height: 260),

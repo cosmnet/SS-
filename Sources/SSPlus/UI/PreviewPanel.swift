@@ -4,8 +4,9 @@ import SwiftUI
 // MARK: - Model
 
 enum PreviewItem {
-    /// Önizleme görüntüsü, kayıtlı dosya, piksel görüntüsü (düzenleme için), ölçek
-    case image(NSImage, URL, CGImage, CGFloat)
+    /// Küçük önizleme (tam çözünürlük bellekte tutulmaz), kayıtlı dosya, ölçek.
+    /// Düzenleme ve OCR dosyayı gerektiğinde yeniden okur.
+    case image(NSImage, URL, CGFloat)
     case video(URL)
 }
 
@@ -19,7 +20,7 @@ final class PreviewModel: ObservableObject {
 
     var currentURL: URL? {
         switch item {
-        case let .image(_, url, _, _)?: return url
+        case let .image(_, url, _)?: return url
         case let .video(url)?: return url
         case nil: return nil
         }
@@ -120,7 +121,7 @@ final class PreviewPanelController {
 
     private func contentSize(for item: PreviewItem) -> CGSize {
         switch item {
-        case let .image(nsImage, _, _, _):
+        case let .image(nsImage, _, _):
             let maxW: CGFloat = 340
             let maxH: CGFloat = 280
             let imageSize = nsImage.size
@@ -250,7 +251,8 @@ final class PreviewPanelController {
     /// Görüntüye tıkla → düzenleyici ekranın ortasında açılır; kaydedince
     /// AYNI DOSYANIN üstüne yazılır.
     func editCurrentImage() {
-        guard case let .image(_, url, cgImage, scale)? = model.item else { return }
+        guard case let .image(_, url, scale)? = model.item,
+              let cgImage = ImageFile.loadCGImage(url) else { return }
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
         close()
@@ -267,15 +269,16 @@ final class PreviewPanelController {
     }
 
     func copy() {
-        guard case let .image(nsImage, _, _, _)? = model.item else { return }
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.writeObjects([nsImage])
+        guard case let .image(_, url, _)? = model.item,
+              let data = try? Data(contentsOf: url) else { return }
+        let changeCount = OutputPipeline.writeImageToPasteboard(data, fileExtension: url.pathExtension)
+        ClipboardStore.shared.markOwnChange(changeCount)   // yeniden kopyalama geçmişe düşmesin
         flash(L("Kopyalandı"))
     }
 
     func runOCR() {
-        guard case let .image(_, _, cgImage, _)? = model.item else { return }
+        guard case let .image(_, url, _)? = model.item,
+              let cgImage = ImageFile.loadCGImage(url) else { return }
         pauseDismiss()
         Task {
             let text = try? await OCRService.recognizeText(in: cgImage)
@@ -293,7 +296,7 @@ final class PreviewPanelController {
     func openCurrent() {
         guard let item = model.item else { return }
         switch item {
-        case let .image(_, url, _, _), let .video(url):
+        case let .image(_, url, _), let .video(url):
             NSWorkspace.shared.open(url)
         }
         close()
@@ -302,7 +305,7 @@ final class PreviewPanelController {
     func revealCurrent() {
         guard let item = model.item else { return }
         switch item {
-        case let .image(_, url, _, _), let .video(url):
+        case let .image(_, url, _), let .video(url):
             NSWorkspace.shared.activateFileViewerSelecting([url])
         }
         close()
@@ -311,7 +314,7 @@ final class PreviewPanelController {
     func deleteCurrent() {
         guard let item = model.item else { return }
         switch item {
-        case let .image(_, url, _, _), let .video(url):
+        case let .image(_, url, _), let .video(url):
             try? FileManager.default.trashItem(at: url, resultingItemURL: nil)
         }
         close()
@@ -348,7 +351,7 @@ struct PreviewCardView: View {
     var body: some View {
         Group {
             switch model.item {
-            case let .image(nsImage, _, _, _)?:
+            case let .image(nsImage, _, _)?:
                 imageCard(nsImage)
             case let .video(url)?:
                 videoCard(url)
@@ -382,7 +385,7 @@ struct PreviewCardView: View {
                     TapGesture().onEnded { controller?.editCurrentImage() }
                 )
                 .onDrag {
-                    if case let .image(_, url, _, _)? = model.item {
+                    if case let .image(_, url, _)? = model.item {
                         return NSItemProvider(object: url as NSURL)
                     }
                     return NSItemProvider()

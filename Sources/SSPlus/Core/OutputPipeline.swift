@@ -54,16 +54,19 @@ enum OutputPipeline {
             return
         }
 
-        let nsImage = NSImage(cgImage: cgImage, size: pointSize)
+        // Kart için küçük önizleme; tam çözünürlüklü görüntü fonksiyon bitince serbest kalır.
+        let thumbCG = ImageFile.thumbnail(from: data, maxPixel: 720) ?? cgImage
+        let preview = NSImage(cgImage: thumbCG, size: pointSize)
 
         if settings.copyToClipboard {
-            copyToPasteboard(nsImage, encoded: data, fileExtension: format.fileExtension)
+            let changeCount = writeImageToPasteboard(data, fileExtension: format.fileExtension)
+            ClipboardStore.shared.noteOwnCapture(encoded: data, fileExtension: format.fileExtension, pasteboardChangeCount: changeCount)
         }
         if settings.playSound {
             NSSound(named: "Pop")?.play()
         }
         if settings.showPreview {
-            PreviewPanelController.shared.show(.image(nsImage, url, cgImage, scale))
+            PreviewPanelController.shared.show(.image(preview, url, scale))
         }
         // Kart gösterildikten SONRA: yükleme durumu karta işlenir. Yükleme kapalıysa
         // `data` burada son kez kullanılır ve fonksiyon bitince serbest kalır.
@@ -94,8 +97,8 @@ enum OutputPipeline {
         }
 
         if settings.copyToClipboard {
-            let nsImage = NSImage(cgImage: cgImage, size: pointSize)
-            copyToPasteboard(nsImage, encoded: data, fileExtension: format.fileExtension)
+            let changeCount = writeImageToPasteboard(data, fileExtension: format.fileExtension)
+            ClipboardStore.shared.noteOwnCapture(encoded: data, fileExtension: format.fileExtension, pasteboardChangeCount: changeCount)
         }
         // Drive'daki dosya da güncellenir (aynı kimlik, aynı bağlantı).
         DriveUploadCoordinator.shared.upload(imageData: data, mimeType: format.mimeType, localURL: url)
@@ -112,18 +115,20 @@ enum OutputPipeline {
         DriveUploadCoordinator.shared.uploadVideo(localURL: url)
     }
 
-    /// Görüntüyü panoya yazar ve pano geçmişine ZATEN kodlanmış veriyi verir;
-    /// böylece geçmiş, SS+'ın kendi yakalamasını ana iş parçacığında yeniden
-    /// PNG'ye çevirmek zorunda kalmaz.
-    private static func copyToPasteboard(_ image: NSImage, encoded data: Data, fileExtension: String) {
+    /// Görüntüyü panoya BAYT olarak yazar (PNG ya da JPEG) ve TIFF'i isteyen
+    /// uygulamalar için gerektiğinde üretilen bir sağlayıcı ekler. Panoya NSImage
+    /// nesnesi verilmez: o nesne tam çözünürlüklü yakalamayı bir sonraki
+    /// kopyalamaya dek bellekte tutuyordu. Döndürülen değer pano sayacıdır.
+    @discardableResult
+    static func writeImageToPasteboard(_ data: Data, fileExtension: String) -> Int {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.writeObjects([image])
-        ClipboardStore.shared.noteOwnCapture(
-            encoded: data,
-            fileExtension: fileExtension,
-            pasteboardChangeCount: pasteboard.changeCount
-        )
+        let item = NSPasteboardItem()
+        let isJPEG = ["jpg", "jpeg"].contains(fileExtension.lowercased())
+        item.setData(data, forType: isJPEG ? NSPasteboard.PasteboardType("public.jpeg") : .png)
+        item.setDataProvider(LazyTIFFProvider(data: data), forTypes: [.tiff])
+        pasteboard.writeObjects([item])
+        return pasteboard.changeCount
     }
 
     private static func encode(_ rep: NSBitmapImageRep, format: ImageFormat) -> Data? {

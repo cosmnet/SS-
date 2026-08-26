@@ -242,8 +242,8 @@ final class ClipboardStore: ObservableObject {
             pasteboard.setString(entry.text ?? "", forType: .string)
         case .image:
             guard let file = entry.imageFile,
-                  let image = NSImage(contentsOf: storeDirectory.appendingPathComponent(file)) else { return }
-            pasteboard.writeObjects([image])
+                  let data = try? Data(contentsOf: storeDirectory.appendingPathComponent(file)) else { return }
+            OutputPipeline.writeImageToPasteboard(data, fileExtension: (file as NSString).pathExtension)
         }
         // Geri kopyalama yeni bir girdi üretmesin
         lastChangeCount = pasteboard.changeCount
