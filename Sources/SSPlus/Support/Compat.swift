@@ -37,6 +37,7 @@ struct SymbolImage: View {
             "checkmark.seal.fill": "✓", "exclamationmark.triangle.fill": "⚠", "externaldrive": "▬",
             "doc.on.clipboard": "📋", "rectangle.topthird.inset.filled": "▬", "globe": "◍",
             "wrench.and.screwdriver": "🔧", "paintpalette": "🎨", "film.stack": "▶",
+            "mic.fill": "🎤", "checkmark.circle.fill": "✓",
         ]
         return table[name] ?? "•"
     }

@@ -8,7 +8,7 @@ protocol ScreenRecording: AnyObject {
     var onFailure: ((Error) -> Void)? { get set }
     /// `start` sonrası: sistem sesi gerçekten alınıyor mu (macOS 13+ ve ayar açık).
     var capturesAudio: Bool { get }
-    /// `start` sonrası: mikrofon gerçekten kaydediliyor mu (macOS 15+ ve ayar açık).
+    /// `start` sonrası: mikrofon gerçekten kaydediliyor mu (ayar açık, izin verilmiş, cihaz var).
     var capturesMicrophone: Bool { get }
     /// Ses düzeyi (tepe/RMS), ~20 Hz; arka plan kuyruğundan çağrılır.
     var onAudioLevel: ((AudioLevelReading) -> Void)? { get set }
@@ -30,7 +30,7 @@ enum RecorderFactory {
 // MARK: - ScreenCaptureKit (macOS 12.3+)
 
 @available(macOS 12.3, *)
-final class ScreenRecorder: NSObject, ScreenRecording, SCStreamOutput, SCStreamDelegate {
+final class ScreenRecorder: NSObject, ScreenRecording, SCStreamOutput, SCStreamDelegate, AVCaptureAudioDataOutputSampleBufferDelegate {
     /// Ayarlardaki kaba göre uzantı düzeltilebildiği için değişken; stop() bunu döndürür.
     private(set) var url: URL
     var onFailure: ((Error) -> Void)?
@@ -39,6 +39,8 @@ final class ScreenRecorder: NSObject, ScreenRecording, SCStreamOutput, SCStreamD
     var onAudioLevel: ((AudioLevelReading) -> Void)?
 
     private var stream: SCStream?
+    /// macOS 15 öncesinde mikrofon ScreenCaptureKit'ten değil, ayrı bir AVCaptureSession'dan gelir.
+    private var micSession: AVCaptureSession?
     /// Aşağıdaki alanlar YALNIZCA `sampleQueue` üzerinden okunur/yazılır.
     private var writer: AVAssetWriter?
     private var videoInput: AVAssetWriterInput?
@@ -80,9 +82,20 @@ final class ScreenRecorder: NSObject, ScreenRecording, SCStreamOutput, SCStreamD
         var audioEnabled = false
         if #available(macOS 13, *) { audioEnabled = captureAudio }
         capturesAudio = audioEnabled
-        // Mikrofon yakalama ScreenCaptureKit'te macOS 15 ile geldi.
+        // Mikrofon: macOS 15+ ScreenCaptureKit'in kendi mikrofon çıkışı; daha eski
+        // sürümlerde AVFoundation (AVCaptureSession + AVCaptureAudioDataOutput) aynı
+        // `sampleQueue` üzerinden tampon verir ve aynı ses parçasına yazılır.
         var micEnabled = false
-        if #available(macOS 15, *) { micEnabled = captureMicrophone }
+        var micViaSCK = false
+        if captureMicrophone {
+            if #available(macOS 15, *) {
+                micEnabled = true
+                micViaSCK = true
+            } else if let session = makeMicrophoneSession() {
+                micSession = session
+                micEnabled = true
+            }
+        }
         capturesMicrophone = micEnabled
 
         let config = SCStreamConfiguration()
@@ -94,7 +107,7 @@ final class ScreenRecorder: NSObject, ScreenRecording, SCStreamOutput, SCStreamD
         config.showsCursor = showCursor
         config.queueDepth = 6
         if #available(macOS 13, *) { config.capturesAudio = audioEnabled }
-        if #available(macOS 15, *), micEnabled {
+        if #available(macOS 15, *), micViaSCK {
             config.captureMicrophone = true
             config.microphoneCaptureDeviceID = AVCaptureDevice.default(for: .audio)?.uniqueID
         }
@@ -160,11 +173,12 @@ final class ScreenRecorder: NSObject, ScreenRecording, SCStreamOutput, SCStreamD
             if #available(macOS 13, *), audioEnabled {
                 try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: sampleQueue)
             }
-            if #available(macOS 15, *), micEnabled {
+            if #available(macOS 15, *), micViaSCK {
                 try stream.addStreamOutput(self, type: .microphone, sampleHandlerQueue: sampleQueue)
             }
             try await stream.startCapture()
         } catch {
+            micSession = nil
             writer.cancelWriting()
             try? FileManager.default.removeItem(at: url)
             throw error
@@ -186,9 +200,48 @@ final class ScreenRecorder: NSObject, ScreenRecording, SCStreamOutput, SCStreamD
             self.measureFailures = 0
         }
         self.stream = stream
+        micSession?.startRunning()
 
         // Çizim penceresi akış başladıktan SONRA oluşur; filtreden muaf kalıp videoya girer.
         RecordingDrawController.shared.arm()
+    }
+
+    /// macOS 15 öncesi için mikrofon oturumu: varsayılan giriş cihazı → tek kanal 48 kHz
+    /// float LPCM tamponlar `sampleQueue` üzerinde `captureOutput(_:didOutput:from:)`'a gelir.
+    /// Cihaz yoksa ya da izin verilmemişse nil (mikrofonsuz devam edilir).
+    private func makeMicrophoneSession() -> AVCaptureSession? {
+        guard let device = AVCaptureDevice.default(for: .audio),
+              let input = try? AVCaptureDeviceInput(device: device) else { return nil }
+        let session = AVCaptureSession()
+        let output = AVCaptureAudioDataOutput()
+        output.audioSettings = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: 48_000,
+            AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsNonInterleaved: false,
+        ]
+        output.setSampleBufferDelegate(self, queue: sampleQueue)
+        session.beginConfiguration()
+        guard session.canAddInput(input), session.canAddOutput(output) else {
+            session.commitConfiguration()
+            return nil
+        }
+        session.addInput(input)
+        session.addOutput(output)
+        session.commitConfiguration()
+        return session
+    }
+
+    // MARK: AVCaptureAudioDataOutputSampleBufferDelegate (macOS < 15 mikrofonu)
+
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard sampleBuffer.isValid, let writer, writer.status == .writing else { return }
+        meter(sampleBuffer, isMic: true)
+        startSessionIfNeeded(with: sampleBuffer)
+        guard sessionStarted, let micInput, micInput.isReadyForMoreMediaData else { return }
+        micInput.append(sampleBuffer)
     }
 
     func stop() async throws -> URL {
@@ -196,6 +249,8 @@ final class ScreenRecorder: NSObject, ScreenRecording, SCStreamOutput, SCStreamD
             try? await stream.stopCapture()
         }
         stream = nil
+        micSession?.stopRunning()
+        micSession = nil
 
         let (writer, started): (AVAssetWriter?, Bool) = sampleQueue.sync {
             let w = self.writer
@@ -319,18 +374,22 @@ final class ScreenRecorder: NSObject, ScreenRecording, SCStreamOutput, SCStreamD
 
 // MARK: - AVCaptureScreenInput (macOS 10.15 – 12.2)
 
-/// ScreenCaptureKit öncesi Mac'ler için kayıt: AVCaptureSession + ekran girişi +
-/// film dosyası çıkışı. Sistem sesi bu yolda yoktur; kap her zaman QuickTime (.mov).
-final class LegacyScreenRecorder: NSObject, ScreenRecording, AVCaptureFileOutputRecordingDelegate {
+/// ScreenCaptureKit öncesi Mac'ler için kayıt: AVCaptureSession + ekran girişi (+ mikrofon
+/// girişi) + film dosyası çıkışı. Sistem sesi bu yolda yoktur (macOS'ta API'si yok);
+/// mikrofon AVFoundation ile kaydedilir. Kap her zaman QuickTime (.mov).
+final class LegacyScreenRecorder: NSObject, ScreenRecording, AVCaptureFileOutputRecordingDelegate, AVCaptureAudioDataOutputSampleBufferDelegate {
     private(set) var url: URL
     var onFailure: ((Error) -> Void)?
-    /// Bu yolda sistem sesi ve mikrofon yoktur.
+    /// Bu yolda sistem sesi yoktur.
     let capturesAudio = false
-    let capturesMicrophone = false
+    private(set) var capturesMicrophone = false
     var onAudioLevel: ((AudioLevelReading) -> Void)?
 
     private let session = AVCaptureSession()
     private let output = AVCaptureMovieFileOutput()
+    private let meterOutput = AVCaptureAudioDataOutput()
+    private let meterQueue = DispatchQueue(label: "ssplus.legacy.meter")
+    private var meterLastEmit: CFAbsoluteTime = 0
     private var stopContinuation: CheckedContinuation<URL, Error>?
     private let lock = NSLock()
 
@@ -362,6 +421,19 @@ final class LegacyScreenRecorder: NSObject, ScreenRecording, AVCaptureFileOutput
         session.addInput(input)
         guard session.canAddOutput(output) else { session.commitConfiguration(); throw CaptureError.encodeFailed }
         session.addOutput(output)
+        // Mikrofon: film çıkışı ses parçasını kendiliğinden yazar; ayrı bir veri
+        // çıkışı yalnızca düzey göstergesi için tamponları ölçer.
+        if captureMicrophone,
+           let device = AVCaptureDevice.default(for: .audio),
+           let micInput = try? AVCaptureDeviceInput(device: device),
+           session.canAddInput(micInput) {
+            session.addInput(micInput)
+            capturesMicrophone = true
+            if session.canAddOutput(meterOutput) {
+                meterOutput.setSampleBufferDelegate(self, queue: meterQueue)
+                session.addOutput(meterOutput)
+            }
+        }
         session.commitConfiguration()
         if let connection = output.connection(with: .video) {
             output.setOutputSettings([AVVideoCodecKey: AVVideoCodecType.h264], for: connection)
@@ -383,6 +455,14 @@ final class LegacyScreenRecorder: NSObject, ScreenRecording, AVCaptureFileOutput
             lock.lock(); stopContinuation = cont; lock.unlock()
             output.stopRecording()
         }
+    }
+
+    /// Mikrofon düzeyi (~20 Hz), yalnızca gösterge için.
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        let now = CFAbsoluteTimeGetCurrent()
+        guard now - meterLastEmit >= 0.05, let reading = AudioLevel.measure(sampleBuffer) else { return }
+        meterLastEmit = now
+        onAudioLevel?(reading)
     }
 
     func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL, from connections: [AVCaptureConnection], error: Error?) {

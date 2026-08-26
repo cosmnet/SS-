@@ -64,13 +64,25 @@ enum RecordProbe {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("ssplus-record-probe.mov")
         try? FileManager.default.removeItem(at: url)
         let recorder = ScreenRecorder(url: url)
-        var emissions = 0
-        var maxPeak: Float = 0
+        // Sayaçlar örnek kuyruğundan güncellenip ana aktörden okunur: kilitle.
+        final class Counters {
+            let lock = NSLock()
+            var emissions = 0
+            var maxPeak: Float = 0
+            func snapshot() -> (Int, Float) {
+                lock.lock(); defer { lock.unlock() }
+                return (emissions, maxPeak)
+            }
+        }
+        let counters = Counters()
         recorder.onAudioLevel = { reading in
-            emissions += 1
-            maxPeak = max(maxPeak, reading.peak)
+            counters.lock.lock()
+            counters.emissions += 1
+            counters.maxPeak = max(counters.maxPeak, reading.peak)
+            let n = counters.emissions
+            counters.lock.unlock()
             print(String(format: "emit #%3d  tepe %6.1f dBFS  rms %6.1f dBFS  frames %d",
-                         emissions, AudioLevel.decibels(reading.peak), AudioLevel.decibels(reading.rms), reading.frames))
+                         n, AudioLevel.decibels(reading.peak), AudioLevel.decibels(reading.rms), reading.frames))
         }
         do {
             let rect = CGRect(x: screen.frame.midX - 200, y: screen.frame.midY - 150, width: 400, height: 300)
@@ -79,6 +91,7 @@ enum RecordProbe {
             print("kayıt başladı (ses=\(recorder.capturesAudio) mikrofon=\(recorder.capturesMicrophone)); \(seconds) sn konuş…")
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             let out = try await recorder.stop()
+            let (emissions, maxPeak) = counters.snapshot()
             print("bitti: \(out.path) · emisyon \(emissions) · en yüksek tepe \(String(format: "%.1f", AudioLevel.decibels(maxPeak))) dBFS")
             return emissions == 0 ? 3 : (maxPeak > 0.001 ? 0 : 1)
         } catch {

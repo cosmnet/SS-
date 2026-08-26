@@ -21,9 +21,19 @@
 <p class="lead">Every release of SS+. Download the latest version from the <a href="/#download">home page</a>.</p>
 
 <div class="rel">
+  <h3>1.6.1 <time datetime="2026-08-26">26 August 2026</time></h3>
+  <ul>
+    <li>Microphone recording now works on every supported macOS version, not only 15+: on macOS 12.3–14 an AVFoundation microphone session feeds the same track; on 10.15–12.2 the legacy recorder captures the microphone too (with the live level meter).</li>
+    <li>Microphone permission is requested as soon as you turn on "Record audio", so the first recording isn't interrupted by the system prompt.</li>
+    <li>Settings explains version limits in place (system audio needs macOS 13).</li>
+    <li>Build is warning-free again; small diagnostic-code fixes.</li>
+  </ul>
+</div>
+
+<div class="rel">
   <h3>1.6.0 <time datetime="2026-08-25">25 August 2026</time></h3>
   <ul>
-    <li>Audio recording (Pro) is now a single setting: system audio and your microphone are recorded as two separate tracks in the same file (microphone needs macOS 15+; on by default with Pro).</li>
+    <li>Audio recording (Pro) is now a single setting: system audio and your microphone are recorded as two separate tracks in the same file (on by default with Pro).</li>
     <li>Live audio level meter in the island while recording, driven by the actual captured samples — all PCM formats, including 24-bit microphones.</li>
     <li>Recording a completely static screen area no longer fails with "No frames were captured"; the file is saved with its audio.</li>
     <li>The island is now hidden when idle by default; turn it on in Settings → General → Capture.</li>

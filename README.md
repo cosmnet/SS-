@@ -19,7 +19,8 @@ Swift + SwiftUI + ScreenCaptureKit ile yazılmıştır. Harici bağımlılık yo
   - **Tüm ekran** — seçim sırasında `↩` ya da menüden
 - **Video kaydı** — ScreenCaptureKit + AVAssetWriter ile alan bazlı `.mov` kaydı (H.264).
 - **Ses kaydı (Pro)** — Tek ayar: **"Sesi kaydet (sistem + mikrofon)"**, Pro'da varsayılan açık.
-  Sistem sesi (macOS 13+) ve mikrofon (macOS 15+) aynı dosyaya **iki ayrı ses parçası** olarak
+  Sistem sesi (macOS 13+) ve mikrofon (tüm sürümler: macOS 15+ ScreenCaptureKit, öncesinde
+  AVFoundation) aynı dosyaya **iki ayrı ses parçası** olarak
   yazılır; kayıt sırasında adada canlı ses düzeyi göstergesi görünür (mikrofon için ilk
   kullanımda izin sorulur).
 - **Önizleme kartı** — Yakaladıktan sonra sağ altta belirir; kopyalayabilir, Finder'da

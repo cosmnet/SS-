@@ -148,9 +148,10 @@ final class AppState: ObservableObject {
         let url = settings.saveFolder.appendingPathComponent(OutputPipeline.fileName(prefix: L("SS+ Kayıt"), ext: ext))
         try? FileManager.default.createDirectory(at: settings.saveFolder, withIntermediateDirectories: true)
 
-        // Mikrofon: ses kaydı (Pro) açıksa izni iste (macOS 15+). Reddedilirse kayıt mikrofonsuz sürer.
+        // Mikrofon: ses kaydı (Pro) açıksa izni iste (tüm sürümler; 15+ ScreenCaptureKit,
+        // öncesinde AVFoundation). Reddedilirse kayıt mikrofonsuz sürer.
         var micWanted = false
-        if pro && settings.recordAudio, #available(macOS 15, *) {
+        if pro && settings.recordAudio {
             if await AVCaptureDevice.requestAccess(for: .audio) {
                 micWanted = true
             } else {

@@ -264,6 +264,12 @@ enum Localization {
         "Güncelleme denetlenemedi": "Couldn't check for updates",
         "Sunucuya ulaşılamadı: %@": "The server could not be reached: %@",
 
+        // Ses kaydı (1.6.1)
+        "Sistem sesi ve mikrofon aynı dosyaya iki ayrı ses parçası olarak yazılır. Sistem sesi macOS 13 ve üzeri ister; mikrofon tüm sürümlerde kaydedilir (ilk kullanımda izin sorulur).":
+            "System audio and the microphone are written to the same file as two separate tracks. System audio needs macOS 13 or later; the microphone is recorded on every version (permission is requested on first use).",
+        "Bu macOS sürümünde sistem sesi kaydedilemez (macOS 13 gerekir); yalnızca mikrofon kaydedilir.":
+            "System audio can't be recorded on this macOS version (13 is required); only the microphone is recorded.",
+
         // Bakım / kaldırma
         "Bakım": "Maintenance",
         "İzin sorunlarında ya da temiz kurulum için: macOS'taki SS+ izin kayıtlarını (Ekran Kaydı vb.) siler. İstersen ayarları ve Google oturumunu da kaldırıp uygulamayı Çöp'e taşır.":

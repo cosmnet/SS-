@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import SwiftUI
 
 // MARK: - Pencere denetleyicisi
@@ -428,6 +429,20 @@ struct OutputTab: View {
     @ObservedObject private var settings = SettingsStore.shared
     @ObservedObject private var pro = ProManager.shared
 
+    /// Ses kaydı açılınca mikrofon iznini hemen iste; ilk kayıt sistem uyarısıyla bölünmesin.
+    private var recordAudioBinding: Binding<Bool> {
+        Binding(
+            get: { settings.recordAudio },
+            set: { on in
+                settings.recordAudio = on
+                if on, pro.isPro {
+                    AVCaptureDevice.requestAccess(for: .audio) { _ in }
+                }
+            }
+        )
+    }
+
+
     var body: some View {
         SettingsSection(title: L("Konum"), icon: "externaldrive") {
             HStack(spacing: 8) {
@@ -512,12 +527,15 @@ struct OutputTab: View {
                 .frame(width: 110)
                 .disabled(!pro.isPro)
                 Spacer()
-                Toggle(L("Sesi kaydet (sistem + mikrofon)"), isOn: $settings.recordAudio)
+                Toggle(L("Sesi kaydet (sistem + mikrofon)"), isOn: recordAudioBinding)
                     .toggleStyle(.checkbox)
                     .disabled(!pro.isPro)
                 if !pro.isPro { ProBadge() }
             }
-            caption(L("Sistem sesi ve mikrofon aynı dosyaya iki ayrı ses parçası olarak yazılır. Sistem sesi macOS 13, mikrofon macOS 15 ve üzeri ister; mikrofon için ilk kullanımda izin sorulur."))
+            caption(L("Sistem sesi ve mikrofon aynı dosyaya iki ayrı ses parçası olarak yazılır. Sistem sesi macOS 13 ve üzeri ister; mikrofon tüm sürümlerde kaydedilir (ilk kullanımda izin sorulur)."))
+            if #unavailable(macOS 13) {
+                caption(L("Bu macOS sürümünde sistem sesi kaydedilemez (macOS 13 gerekir); yalnızca mikrofon kaydedilir."))
+            }
             if !pro.isPro {
                 caption(L("Pro olmadan kayıt 30 fps, H.264 ve otomatik bit hızıyla yapılır."))
             }
