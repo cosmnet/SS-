@@ -1,7 +1,7 @@
 {
-  "version": "1.6.3",
-  "build": 26,
-  "download": "https://github.com/cosmnet/SS-/releases/download/v1.6.3/SSPlus-1.6.3.dmg",
+  "version": "1.6.4",
+  "build": 28,
+  "download": "https://github.com/cosmnet/SS-/releases/download/v1.6.4/SSPlus-1.6.4.dmg",
   "notes": "https://ssplus-app.vercel.app/changelog",
   "minimumOS": "10.15"
 }
