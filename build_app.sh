@@ -49,6 +49,24 @@ BUILD="${BUILD:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 # @executable_path/../Frameworks rpath'ini taşır (Package.swift).
 MIN_INTEL="10.15"
 MIN_ARM="11.0"
+
+# Yerelleştirme tablosunda aynı anahtar iki kez yazılırsa swiftc yalnızca UYARIR,
+# ama Swift çalışma zamanı sözlük ilk okunduğunda çöker ("Dictionary literal
+# contains duplicate keys"). 1.6.6 bu yüzden İngilizce arayüzde ilk L() çağrısında
+# çöktü. Derlemeden önce yakala: anahtarlar satır başında `"…":` biçimindedir.
+LOC_FILE="Sources/SSPlus/Support/Localization.swift"
+LOC_DUPS="$(awk '
+  /^[[:space:]]*"([^"\\]|\\.)*"[[:space:]]*:/ {
+    match($0, /"([^"\\]|\\.)*"/)
+    key = substr($0, RSTART, RLENGTH)
+    if (++seen[key] == 2) print key
+  }' "$LOC_FILE")"
+if [[ -n "$LOC_DUPS" ]]; then
+  echo "✗ ${LOC_FILE}: yinelenen anahtar(lar) — çalışma zamanında çökme sebebi:" >&2
+  print -r -- "$LOC_DUPS" | sed 's/^/    /' >&2
+  exit 1
+fi
+
 echo "▶︎ Release derleniyor (universal: x86_64 ≥ ${MIN_INTEL}, arm64 ≥ ${MIN_ARM})…"
 swift build -c release --triple "x86_64-apple-macosx${MIN_INTEL}"
 swift build -c release --triple "arm64-apple-macosx${MIN_ARM}"

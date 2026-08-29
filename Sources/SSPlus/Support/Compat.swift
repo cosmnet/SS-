@@ -38,6 +38,7 @@ struct SymbolImage: View {
             "doc.on.clipboard": "📋", "rectangle.topthird.inset.filled": "▬", "globe": "◍",
             "wrench.and.screwdriver": "🔧", "paintpalette": "🎨", "film.stack": "▶",
             "mic.fill": "🎤", "checkmark.circle.fill": "✓",
+            "rectangle.dashed.badge.record": "▭", "arrow.clockwise.circle.fill": "↻",
         ]
         return table[name] ?? "•"
     }

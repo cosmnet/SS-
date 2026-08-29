@@ -74,7 +74,6 @@ enum Localization {
         "İzin ver": "Grant",
         "Ayarlarda aç": "Open in Settings",
         "Şimdilik geç": "Skip for now",
-        "Bitti": "Done",
         "İzinler…": "Permissions…",
         "İzin çalışmıyor mu?": "Permission not working?",
         "Ekran görüntüsü ve video alabilmek için. macOS, ekranı okuyan her uygulamadan bunu ayrıca ister.":

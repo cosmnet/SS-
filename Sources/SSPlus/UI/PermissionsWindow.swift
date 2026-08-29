@@ -32,7 +32,10 @@ enum PermissionKind: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .screenRecording: return "rectangle.dashed.badge.record"
+        case .screenRecording:
+            // ".badge.record" çeşidi SF Symbols 4 (macOS 13+); 11–12'de boş çiziliyordu.
+            if #available(macOS 13, *) { return "rectangle.dashed.badge.record" }
+            return "rectangle.dashed"
         case .microphone:      return "mic.fill"
         }
     }
@@ -130,8 +133,11 @@ final class PermissionsWindowController: NSObject, NSWindowDelegate {
             .filter(\.isRequired)
             .allSatisfy { $0.status.isGranted }
         guard !allRequiredGranted, !alreadyShown else { return }
-        UserDefaults.standard.set(true, forKey: key)
         show()
+        // Bayrak pencere gerçekten gösterildikten SONRA yazılır: show() sırasında
+        // çökülürse (1.6.6'daki yinelenen yerelleştirme anahtarı gibi) tek seferlik
+        // tanıtım boşa yanmasın.
+        UserDefaults.standard.set(true, forKey: key)
     }
 
     func show() {
@@ -141,21 +147,37 @@ final class PermissionsWindowController: NSObject, NSWindowDelegate {
             return
         }
 
-        let hosting = NSHostingController(rootView: PermissionsView())
+        // Kök görünüme sabit genişlik verilir: fittingSize, SwiftUI'nin "ideal"
+        // boyutunu genişlik sınırı OLMADAN ölçer (metinler tek satıra açılır,
+        // ~855 pt) ve boy olduğundan kısa çıkar; başlık ile Bitti/Geç düğmeleri
+        // pencerenin dışında kalıyordu. Sabit genişlikte metinler sarılır,
+        // boy doğru ölçülür.
+        let width: CGFloat = 520
+        let hosting = NSHostingController(rootView: PermissionsView().frame(width: width))
+
+        // Boy içeriğe göre: izin verilmişken satırlar kısadır, eksikken
+        // yeniden başlatma uyarısı da eklenir. Sabit boy, ilk durumda
+        // pencerenin yarısını boş bırakıyordu. Ölçüm pencere kurulmadan
+        // ÖNCE yapılır (aşağıdaki sizingOptions notuna bakınız).
+        hosting.view.setFrameSize(NSSize(width: width, height: 1))
+        hosting.view.layoutSubtreeIfNeeded()
+        let fitted = hosting.view.fittingSize.height
+        let height = min(max(fitted, 300), 640)
+
+        // macOS 13+: NSHostingController, SwiftUI'nin "ideal" boyutunu pencereye
+        // intrinsic/min/maks kısıtı olarak uygular; bu pencere açıldıktan saniyeler
+        // sonra binlerce punto boya büyüyor, Bitti/Geç düğmeleri ekranın dışında
+        // kalıyordu (macOS 26'da ölçüldü: 520×6872). Ölçüm bittikten sonra izleme
+        // kapatılır; boy aşağıda elle sabitlenir.
+        if #available(macOS 13, *) {
+            hosting.sizingOptions = []
+        }
+
         let window = NSWindow(contentViewController: hosting)
         window.title = L("SS+ İzinleri")
         window.styleMask = [.titled, .closable, .fullSizeContentView]
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
-
-        // Boy içeriğe göre: izin verilmişken satırlar kısadır, eksikken
-        // yeniden başlatma uyarısı da eklenir. Sabit boy, ilk durumda
-        // pencerenin yarısını boş bırakıyordu.
-        let width: CGFloat = 520
-        hosting.view.setFrameSize(NSSize(width: width, height: 1))
-        hosting.view.layoutSubtreeIfNeeded()
-        let fitted = hosting.view.fittingSize.height
-        let height = min(max(fitted, 300), 520)
         window.setContentSize(NSSize(width: width, height: height))
         window.center()
         window.delegate = self
@@ -167,9 +189,11 @@ final class PermissionsWindowController: NSObject, NSWindowDelegate {
 
         // Esc ile kapansın: kullanıcı bir izin penceresinde sıkıştığını
         // hissetmemeli. `.closable` yalnızca ⌘W ve düğmeyi verir.
+        // Yerel gözlemci sürecin TÜM pencerelerinin tuşlarını görür; yalnızca bu
+        // pencere hedefse yut, Ayarlar ya da seçim katmanındaki Esc'e karışma.
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard event.keyCode == 53 else { return event }   // 53 = Esc
-            self?.close()
+            guard event.keyCode == 53, let self, event.window === self.window else { return event }   // 53 = Esc
+            self.close()
             return nil
         }
     }
