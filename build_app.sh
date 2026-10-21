@@ -47,11 +47,10 @@ BUILD="${BUILD:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 # Swift eşzamanlılık çalışma zamanı 10.15–11'de sistemde bulunmadığından
 # libswift_Concurrency.dylib pakete (Contents/Frameworks) eklenir; ikili
 # @executable_path/../Frameworks rpath'ini taşır (Package.swift).
-# Xcode 27 ve sonrası 12.0'ın altını derlemeyi reddeder; eski hedefler ancak
-# eski bir araç zinciriyle derlenebilir. Gerekirse dışarıdan geçilebilir:
-#   MIN_INTEL=10.15 MIN_ARM=11.0 ./build_app.sh
-MIN_INTEL="${MIN_INTEL:-12.0}"
-MIN_ARM="${MIN_ARM:-12.0}"
+# Asgari macOS sürümü Package.swift'teki platforms değerinden gelir ve
+# derlemeden sonra ikiliden okunur (aşağıda MIN_OS). Xcode 27 ve sonrası
+# 12.0'ın altını zaten derlemiyor.
+MIN_INTEL="12.0"
 
 # Yerelleştirme tablosunda aynı anahtar iki kez yazılırsa swiftc yalnızca UYARIR,
 # ama Swift çalışma zamanı sözlük ilk okunduğunda çöker ("Dictionary literal
@@ -70,18 +69,34 @@ if [[ -n "$LOC_DUPS" ]]; then
   exit 1
 fi
 
-echo "▶︎ Release derleniyor (universal: x86_64 ≥ ${MIN_INTEL}, arm64 ≥ ${MIN_ARM})…"
-swift build -c release --triple "x86_64-apple-macosx${MIN_INTEL}"
-swift build -c release --triple "arm64-apple-macosx${MIN_ARM}"
-BIN_X86=".build/x86_64-apple-macosx/release/SSPlus"
-BIN_ARM=".build/arm64-apple-macosx/release/SSPlus"
-for b in "$BIN_X86" "$BIN_ARM"; do
-  if [[ ! -f "$b" ]]; then echo "✗ Derlenen ikili bulunamadı: $b"; exit 1; fi
+# Universal derleme TEK komutla yapılır. Eskiden iki ayrı `--triple` derlemesi
+# `.build/<üçlü>/release/` altına yazıyordu; yeni SwiftPM ürünü
+# `.build/out/Products/Release/` altına koyuyor. O yüzden çıktının yeri
+# `--show-bin-path` ile sorulur: sabit yola güvenilirse eski bir ikili sessizce
+# paketlenir (1.7.0 hazırlığında tam bunu yaşadık: Ağustos'tan kalma ikili
+# imzalanıp noterlendi).
+echo "▶︎ Release derleniyor (universal: arm64 + x86_64)…"
+ARCHS=(--arch arm64 --arch x86_64)
+swift build -c release "${ARCHS[@]}"
+BIN_DIR="$(swift build -c release "${ARCHS[@]}" --show-bin-path)"
+BIN="${BIN_DIR}/SSPlus"
+[[ -f "$BIN" ]] || { echo "✗ Derlenen ikili bulunamadı: $BIN" >&2; exit 1; }
+
+# Güvenlik ağı: ikili en yeni kaynaktan eskiyse paketleme.
+NEWEST_SRC="$(find Sources -name "*.swift" -newer "$BIN" -print -quit 2>/dev/null || true)"
+if [[ -n "$NEWEST_SRC" ]]; then
+  echo "✗ İkili kaynaktan eski görünüyor (ör. ${NEWEST_SRC}); derleme gerçekten çalıştı mı?" >&2
+  exit 1
+fi
+
+BUILT_ARCHS="$(lipo -archs "$BIN")"
+for want in arm64 x86_64; do
+  [[ "$BUILT_ARCHS" == *"$want"* ]] || { echo "✗ ${want} dilimi yok (bulunan: ${BUILT_ARCHS})" >&2; exit 1; }
 done
-mkdir -p .build/universal
-BIN=".build/universal/SSPlus"
-lipo -create "$BIN_X86" "$BIN_ARM" -output "$BIN"
-echo "  Mimariler: $(lipo -archs "$BIN")"
+# Asgari sürüm ikiliden okunur; Info.plist ile ikili asla çelişmesin.
+MIN_OS="$(otool -l "$BIN" | awk '/LC_BUILD_VERSION/{f=1} f&&/minos/{print $2; exit}')"
+MIN_OS="${MIN_OS:-$MIN_INTEL}"
+echo "  Mimariler: ${BUILT_ARCHS} · asgari macOS: ${MIN_OS}"
 
 if [[ ! -f "$ICON_SRC" ]]; then
   echo "▶︎ Uygulama ikonu üretiliyor…"
@@ -96,16 +111,6 @@ mkdir -p "${BUNDLE}/Contents/Resources"
 cp "$BIN" "${BUNDLE}/Contents/MacOS/SSPlus"
 chmod +x "${BUNDLE}/Contents/MacOS/SSPlus"
 cp "$ICON_SRC" "${BUNDLE}/Contents/Resources/SSPlus.icns"
-
-# Swift eşzamanlılık geri dağıtım kütüphanesi (macOS 10.15–11 için).
-SWIFT_COMPAT_DIR="$(dirname "$(xcrun --find swift)")/../lib/swift-5.5/macosx"
-if [[ -f "${SWIFT_COMPAT_DIR}/libswift_Concurrency.dylib" ]]; then
-  mkdir -p "${BUNDLE}/Contents/Frameworks"
-  cp "${SWIFT_COMPAT_DIR}/libswift_Concurrency.dylib" "${BUNDLE}/Contents/Frameworks/"
-  echo "  libswift_Concurrency.dylib pakete eklendi (macOS 10.15–11 desteği)."
-else
-  echo "  ⚠︎ libswift_Concurrency.dylib bulunamadı; macOS 12'den eski sürümlerde uygulama açılmaz."
-fi
 
 # Google Drive: geliştiricinin OAuth istemci kimliği (git'e girmez).
 if [[ -f "Resources/GoogleOAuth.plist" ]]; then
@@ -145,7 +150,7 @@ cat > "${BUNDLE}/Contents/Info.plist" <<PLIST
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.utilities</string>
     <key>LSMinimumSystemVersion</key>
-    <string>${MIN_INTEL}</string>
+    <string>${MIN_OS}</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSMicrophoneUsageDescription</key>
