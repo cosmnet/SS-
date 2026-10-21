@@ -386,7 +386,7 @@ private final class LoopbackServer: @unchecked Sendable {
         let oauthError = items.first { $0.name == "error" }?.value
 
         // Tarayıcıyı web sitesindeki sonuç sayfasına yönlendir: adres çubuğunda
-        // 127.0.0.1 yerine ssplus-app.vercel.app görünür. (Yerel sayfa yalnızca
+        // 127.0.0.1 yerine ssplusapp.vercel.app görünür. (Yerel sayfa yalnızca
         // yönlendirme izlenemezse yedek olarak durur.)
         let target = (code != nil) ? SiteLinks.connected : SiteLinks.connectFailed
         redirect(connection, to: target, fallback: Self.resultPage(success: code != nil))
@@ -444,7 +444,7 @@ private final class LoopbackServer: @unchecked Sendable {
             <h1>\(title)</h1>
             <p>\(detail)</p>
             <button onclick="window.close()">\(close)</button>
-            <div class="app"><a href="\(SiteLinks.home.absoluteString)">ssplus-app.vercel.app</a> · <a href="\(SiteLinks.privacy.absoluteString)">\(L("Gizlilik politikası"))</a></div>
+            <div class="app"><a href="\(SiteLinks.home.absoluteString)">ssplusapp.vercel.app</a> · <a href="\(SiteLinks.privacy.absoluteString)">\(L("Gizlilik politikası"))</a></div>
           </div>
           <script>setTimeout(function(){try{window.close()}catch(e){}},1500)</script>
         </body></html>
