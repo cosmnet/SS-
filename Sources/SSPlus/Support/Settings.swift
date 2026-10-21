@@ -107,9 +107,8 @@ final class SettingsStore: ObservableObject {
     @Published var fps: Int {
         didSet { d.set(fps, forKey: "fps") }
     }
-    /// Ses kaydı (Pro): sistem sesi (macOS 13+) ve mikrofon (macOS 15+) aynı dosyaya
-    /// iki ayrı ses parçası olarak yazılır. Pro etkinken varsayılan AÇIK;
-    /// Pro değilse yakalama `pro && recordAudio` kapısı nedeniyle etkisizdir.
+    /// Ses kaydı: sistem sesi (macOS 13+) ve mikrofon (macOS 15+) aynı dosyaya
+    /// iki ayrı ses parçası olarak yazılır. Varsayılan AÇIK.
     @Published var recordAudio: Bool {
         didSet { d.set(recordAudio, forKey: "recordAudio") }
     }

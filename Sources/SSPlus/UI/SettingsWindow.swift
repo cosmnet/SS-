@@ -118,7 +118,6 @@ struct SettingsView: View {
         case general = "Genel"
         case output = "Kayıt & Çıktı"
         case shortcuts = "Kısayollar"
-        case pro = "Pro"
 
         var id: String { rawValue }
     }
@@ -136,7 +135,6 @@ struct SettingsView: View {
                 case .general: GeneralTab()
                 case .output: OutputTab()
                 case .shortcuts: ShortcutsTab()
-                case .pro: ProTab()
                 }
             }
             .padding(.horizontal, 16)
@@ -168,22 +166,6 @@ private struct SettingsSection<Content: View>: View {
             .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.primary.opacity(0.045)))
             .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
         }
-    }
-}
-
-/// Pro'ya özel bir denetimin yanına konan küçük rozet.
-private struct ProBadge: View {
-    var body: some View {
-        Text("PRO")
-            .font(.system(size: 8.5, weight: .heavy, design: .rounded))
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(Capsule().fill(LinearGradient(
-                gradient: Gradient(colors: [.pink, .purple]),
-                startPoint: .leading,
-                endPoint: .trailing
-            )))
-            .foregroundColor(.white)
     }
 }
 
@@ -304,6 +286,10 @@ struct GeneralTab: View {
                         .font(.system(size: 11))
                         .foregroundColor(Color.secondary)
                         .lineLimit(1)
+                    Text(L("Cafer Karakaya ve Cem Özkaynak tarafından hazırlandı"))
+                        .font(.system(size: 11))
+                        .foregroundColor(Color.secondary)
+                        .lineLimit(1)
                 }
                 Spacer()
                 Button(L("Güncellemeleri denetle")) {
@@ -330,6 +316,7 @@ struct GeneralTab: View {
             // Ada yerleşimiyle ilgili destek istekleri neredeyse hep ölçüm
             // sorunudur; ölçüyü kullanıcıya göstermek yazışmayı tek adıma
             // indiriyor.
+            caption(L("Tüm özellikler ücretsiz ve açık — kod, abonelik ya da hesap yok."))
             caption(notchDiagnostics)
         }
     }
@@ -491,7 +478,6 @@ struct GeneralTab: View {
 
 struct OutputTab: View {
     @ObservedObject private var settings = SettingsStore.shared
-    @ObservedObject private var pro = ProManager.shared
 
     /// Ses kaydı açılınca mikrofon iznini hemen iste; ilk kayıt sistem uyarısıyla bölünmesin.
     private var recordAudioBinding: Binding<Bool> {
@@ -499,7 +485,7 @@ struct OutputTab: View {
             get: { settings.recordAudio },
             set: { on in
                 settings.recordAudio = on
-                if on, pro.isPro {
+                if on {
                     AVCaptureDevice.requestAccess(for: .audio) { _ in }
                 }
             }
@@ -558,7 +544,6 @@ struct OutputTab: View {
                 fieldLabel(L("Kare hızı"))
                 FrameRateButton(fps: 30)
                 FrameRateButton(fps: 60)
-                if !pro.isPro { ProBadge() }
                 Spacer()
                 fieldLabel(L("Kap"))
                 Picker("", selection: $settings.videoFormat) {
@@ -579,7 +564,6 @@ struct OutputTab: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .frame(width: 130)
-                .disabled(!pro.isPro)
                 fieldLabel(L("Bit hızı"))
                 Picker("", selection: $settings.videoBitrateMbps) {
                     Text(L("Otomatik")).tag(0)
@@ -589,19 +573,13 @@ struct OutputTab: View {
                 }
                 .labelsHidden()
                 .frame(width: 110)
-                .disabled(!pro.isPro)
                 Spacer()
                 Toggle(L("Sesi kaydet (sistem + mikrofon)"), isOn: recordAudioBinding)
                     .toggleStyle(.checkbox)
-                    .disabled(!pro.isPro)
-                if !pro.isPro { ProBadge() }
             }
             caption(L("Sistem sesi ve mikrofon aynı dosyaya iki ayrı ses parçası olarak yazılır. Sistem sesi macOS 13 ve üzeri ister; mikrofon tüm sürümlerde kaydedilir (ilk kullanımda izin sorulur)."))
             if #unavailable(macOS 13) {
                 caption(L("Bu macOS sürümünde sistem sesi kaydedilemez (macOS 13 gerekir); yalnızca mikrofon kaydedilir."))
-            }
-            if !pro.isPro {
-                caption(L("Pro olmadan kayıt 30 fps, H.264 ve otomatik bit hızıyla yapılır."))
             }
         }
 
@@ -624,30 +602,24 @@ struct OutputTab: View {
 
 }
 
-/// Kare hızı seçim düğmesi. 60 fps Pro'ya özeldir: seçilebilir gibi görünüp
-/// sessizce 30'a düşmesin.
+/// Kare hızı seçim düğmesi.
 private struct FrameRateButton: View {
     @ObservedObject private var settings = SettingsStore.shared
-    @ObservedObject private var pro = ProManager.shared
     let fps: Int
 
-    private var locked: Bool { fps > 30 && !pro.isPro }
-
     var body: some View {
-        let selected = settings.fps == fps && !locked
+        let selected = settings.fps == fps
         Button {
             settings.fps = fps
         } label: {
             Text("\(fps) fps")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(selected ? .white : Color.primary.opacity(locked ? 0.35 : 0.85))
+                .foregroundColor(selected ? .white : Color.primary.opacity(0.85))
                 .padding(.horizontal, 9)
                 .frame(height: 20)
                 .background(Capsule().fill(selected ? Color.compatAccent : Color.primary.opacity(0.08)))
         }
         .buttonStyle(.plain)
-        .disabled(locked)
-        .compatHelp(locked ? L("60 fps yalnızca Pro'da") : "")
     }
 }
 
@@ -818,102 +790,3 @@ private struct ShortcutList: View {
     }
 }
 
-// MARK: - Pro
-
-struct ProTab: View {
-    @ObservedObject private var pro = ProManager.shared
-    @State private var codeInput: String = ""
-    @State private var codeError: Bool = false
-
-    /// Yazarken hata uyarısını temizler (onChange macOS 11+, bu yüzden binding içinde).
-    private var codeBinding: Binding<String> {
-        Binding(get: { codeInput }, set: { codeInput = $0; codeError = false })
-    }
-
-    var body: some View {
-        SettingsSection(title: L("Abonelik"), icon: "crown") {
-            HStack(spacing: 12) {
-                SymbolImage(name: pro.isPro ? "star.fill" : "star")
-                    .foregroundColor(pro.isPro ? .yellow : .secondary)
-                    .font(.system(size: 22))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(pro.isPro ? L("SS+ Pro aktif") : "SS+ Pro")
-                        .font(.headline)
-                    Text(pro.isPro ? L("Tüm özellikler açık") : L("Tüm özelliklerin kilidini aç"))
-                        .font(.system(size: 11))
-                        .foregroundColor(Color.secondary)
-                }
-                Spacer()
-                if pro.isPro {
-                    Button(L("Kaldır")) {
-                        pro.clearCode()
-                        codeInput = ""
-                        codeError = false
-                    }
-                    .controlSize(.small)
-                }
-            }
-            rowDivider()
-            codeSection
-        }
-
-        SettingsSection(title: L("Pro özellikleri"), icon: "sparkles") {
-            ForEach(Array(ProManager.features.enumerated()), id: \.offset) { _, feature in
-                HStack(alignment: .top, spacing: 8) {
-                    SymbolImage(name: feature.icon)
-                        .font(.system(size: 11))
-                        .foregroundColor(Color.secondary)
-                        .frame(width: 16)
-                    Text(feature.title).font(.system(size: 12, weight: .semibold))
-                    Text("— " + feature.detail).font(.system(size: 12)).foregroundColor(Color.secondary)
-                    Spacer()
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var codeSection: some View {
-        if pro.isPro {
-            HStack(spacing: 6) {
-                SymbolImage(name: "checkmark.seal.fill")
-                    .foregroundColor(.green)
-                    .font(.system(size: 11))
-                caption(L("Kod ile etkinleştirildi"))
-                if let code = pro.redeemedCode {
-                    Text(code.uppercased())
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(RoundedRectangle(cornerRadius: 4).fill(Color.green.opacity(0.15)))
-                }
-            }
-        } else {
-            HStack(spacing: 8) {
-                fieldLabel(L("Etkinleştirme kodu"))
-                TextField(L("Kodu gir"), text: codeBinding, onCommit: submitCode)
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 12, design: .monospaced))
-                    .frame(maxWidth: 180)
-                Button(L("Etkinleştir"), action: submitCode)
-                    .controlSize(.small)
-                    .disabled(codeInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                Spacer()
-            }
-            if codeError {
-                CompatLabel(title: L("Bu kod geçerli değil."), systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11))
-                    .foregroundColor(.red)
-            }
-        }
-    }
-
-    private func submitCode() {
-        if pro.redeem(codeInput) {
-            codeError = false
-            codeInput = ""
-        } else {
-            codeError = true
-        }
-    }
-}

@@ -18,7 +18,7 @@ Swift + SwiftUI + ScreenCaptureKit ile yazılmıştır. Harici bağımlılık yo
   - **Pencere** — üzerine geldiğin pencereyi vurgular, tıklayınca yakalar
   - **Tüm ekran** — seçim sırasında `↩` ya da menüden
 - **Video kaydı** — ScreenCaptureKit + AVAssetWriter ile alan bazlı `.mov` kaydı (H.264).
-- **Ses kaydı (Pro)** — Tek ayar: **"Sesi kaydet (sistem + mikrofon)"**, Pro'da varsayılan açık.
+- **Ses kaydı** — Tek ayar: **"Sesi kaydet (sistem + mikrofon)"**, varsayılan açık.
   Sistem sesi (macOS 13+) ve mikrofon (tüm sürümler: macOS 15+ ScreenCaptureKit, öncesinde
   AVFoundation) aynı dosyaya **iki ayrı ses parçası** olarak
   yazılır; kayıt sırasında adada canlı ses düzeyi göstergesi görünür (mikrofon için ilk
@@ -35,14 +35,11 @@ Swift + SwiftUI + ScreenCaptureKit ile yazılmıştır. Harici bağımlılık yo
 - **Google Drive (isteğe bağlı)** — Kendi Google hesabınla oturum aç; ekran görüntüleri Drive'da
   SS+'ın oluşturduğu klasöre yüklenir (klasörü sonra istediğin yere taşıyabilirsin), istersen
   "bağlantıya sahip herkes" ile paylaşılıp linki panoya kopyalanır. Ayrıntılar aşağıda.
-- **Pro (demo)**
-  - **Metin Kopyala (OCR)** — Görüntüdeki yazıyı Vision ile tanıyıp panoya alır
-  - **60 FPS** video kaydı
-  - **Ses kaydı** (sistem sesi + mikrofon, iki ayrı parça)
-  - **HEVC** kodeği ve özel bit hızı
+- **Metin Kopyala (OCR)** — Görüntüdeki yazıyı Vision ile tanıyıp panoya alır
+- **60 FPS** video kaydı, **HEVC** kodeği ve özel bit hızı
 
-> Pro özellikleri **Ayarlar → Pro → Etkinleştirme kodu** alanına geçerli bir kod
-> girilerek açılır. Kod doğrulaması tamamen yereldir; hiçbir veri dışarı gönderilmez.
+> Uygulamanın tamamı ücretsizdir: etkinleştirme kodu, abonelik ya da hesap yok.
+> SS+, Cafer Karakaya ve Cem Özkaynak tarafından hazırlanmıştır.
 
 ---
 
@@ -209,7 +206,7 @@ Sources/SSPlus/
     ├── GoogleDrive.swift       # Drive v3 istemcisi + yükleme koordinatörü
     ├── StrokeSmoothing.swift   # Fırça sabitleyici + Catmull-Rom
     ├── Permissions.swift       # Ekran kaydı izni + onarım
-    ├── Pro.swift               # Pro bayrağı + OCR servisi
+    ├── OCR.swift               # Vision ile metin tanıma
     ├── UpdateChecker.swift     # Siteden version.json ile sürüm denetimi
     ├── VersionCompare.swift    # Sürüm dizgilerini bileşen bileşen sayısal karşılaştırma
     ├── AudioLevel.swift        # PCM tampon tepe/RMS ölçümü (kayıt göstergesi)

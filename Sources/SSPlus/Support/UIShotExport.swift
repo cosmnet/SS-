@@ -76,7 +76,6 @@ enum UIShotExport {
         snap(SettingsView(tab: .general), size: CGSize(width: 520, height: 420), name: "ui-settings-general", in: directory, backdrop: .windowBackgroundColor)
         snap(SettingsView(tab: .output), size: CGSize(width: 520, height: 420), name: "ui-settings-output", in: directory, backdrop: .windowBackgroundColor)
         snap(SettingsView(tab: .shortcuts), size: CGSize(width: 520, height: 420), name: "ui-settings-shortcuts", in: directory, backdrop: .windowBackgroundColor)
-        snap(SettingsView(tab: .pro), size: CGSize(width: 520, height: 420), name: "ui-settings-pro", in: directory, backdrop: .windowBackgroundColor)
 
         let actions = AnnotationActions(undo: {}, redo: {}, done: {}, plain: {}, cancel: {})
         snap(AnnotationToolbarView(model: AnnotationModel(), actions: actions), size: CGSize(width: 900, height: 100), name: "ui-editor-toolbar", in: directory, backdrop: chroma)

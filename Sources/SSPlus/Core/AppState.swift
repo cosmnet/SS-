@@ -149,15 +149,14 @@ final class AppState: ObservableObject {
 
     private func startRecording(rect: CGRect, screen: NSScreen) async {
         let settings = SettingsStore.shared
-        let pro = ProManager.shared.isPro
         let ext = settings.videoFormat.lowercased() == "mp4" ? "mp4" : "mov"
         let url = settings.saveFolder.appendingPathComponent(OutputPipeline.fileName(prefix: L("SS+ Kayıt"), ext: ext))
         try? FileManager.default.createDirectory(at: settings.saveFolder, withIntermediateDirectories: true)
 
-        // Mikrofon: ses kaydı (Pro) açıksa izni iste (tüm sürümler; 15+ ScreenCaptureKit,
+        // Mikrofon: ses kaydı açıksa izni iste (tüm sürümler; 15+ ScreenCaptureKit,
         // öncesinde AVFoundation). Reddedilirse kayıt mikrofonsuz sürer.
         var micWanted = false
-        if pro && settings.recordAudio {
+        if settings.recordAudio {
             if await AVCaptureDevice.requestAccess(for: .audio) {
                 micWanted = true
             } else {
@@ -179,8 +178,8 @@ final class AppState: ObservableObject {
             try await recorder.start(
                 globalRect: rect,
                 screen: screen,
-                fps: pro ? settings.fps : min(settings.fps, 30),
-                captureAudio: pro && settings.recordAudio,
+                fps: settings.fps,
+                captureAudio: settings.recordAudio,
                 captureMicrophone: micWanted,
                 showCursor: settings.showCursor
             )

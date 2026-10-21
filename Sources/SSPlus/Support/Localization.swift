@@ -183,7 +183,6 @@ enum Localization {
         "Kopyalandı": "Copied",
         "Metin panoya kopyalandı": "Text copied to clipboard",
         "Metin bulunamadı": "No text found",
-        "OCR yalnızca Pro'da — Ayarlar'dan aç": "OCR is Pro only — unlock in Settings",
         "Videoyu aç": "Open video",
         "Video kaydedildi": "Video saved",
         "Finder'da göster": "Reveal in Finder",
@@ -270,9 +269,11 @@ enum Localization {
             "The last 10 copies are written to disk (~/Library/Application Support/SSPlus/Clipboard); concealed content is never stored.",
         "Kendi hesabınla oturum açarsın; belirteçler yalnızca bu Mac'te tutulur.": "You sign in with your own account; tokens stay on this Mac only.",
         "İmleci dahil et": "Include cursor",
-        "Pro özellikleri": "Pro features",
 
         // Sürüm / güncelleme / site
+        "Cafer Karakaya ve Cem Özkaynak tarafından hazırlandı": "Made by Cafer Karakaya and Cem Özkaynak",
+        "Tüm özellikler ücretsiz ve açık — kod, abonelik ya da hesap yok.":
+            "Every feature is free and unlocked — no codes, no subscription, no account.",
         "Güncellemeleri denetle…": "Check for Updates…",
         "Güncellemeleri denetle": "Check for updates",
         "Güncellemeleri otomatik denetle": "Check for updates automatically",
@@ -354,8 +355,6 @@ enum Localization {
         "Bit hızı": "Bit rate",
         "Otomatik": "Automatic",
         "Sistem sesini kaydet": "Record system audio",
-        "Pro olmadan kayıt 30 fps, H.264 ve otomatik bit hızıyla yapılır.": "Without Pro, recordings use 30 fps, H.264 and automatic bit rate.",
-        "60 fps yalnızca Pro'da": "60 fps is Pro only",
 
         // Ayarlar — Kısayollar
         "Genel kısayollar": "Global shortcuts",
@@ -421,17 +420,7 @@ enum Localization {
         "Oturum açma tamamlanmadı. SS+ Ayarlar'dan tekrar deneyebilirsin.": "Sign-in didn't complete. You can try again from SS+ Settings.",
         "Pencereyi kapat": "Close window",
 
-        // Ayarlar — Pro
-        "Abonelik": "Subscription",
-        "SS+ Pro aktif": "SS+ Pro is active",
-        "Tüm özellikler açık": "All features unlocked",
-        "Tüm özelliklerin kilidini aç": "Unlock all features",
         "Kaldır": "Remove",
-        "Kod ile etkinleştirildi": "Activated with a code",
-        "Etkinleştirme kodu": "Activation code",
-        "Kodu gir": "Enter code",
-        "Etkinleştir": "Activate",
-        "Bu kod geçerli değil.": "This code is not valid.",
         "Metin Kopyala (OCR)": "Copy Text (OCR)",
         "Ekran görüntüsündeki yazıyı tek tıkla panoya al": "Grab the text in a screenshot with one click",
         "60 FPS Video": "60 FPS Video",

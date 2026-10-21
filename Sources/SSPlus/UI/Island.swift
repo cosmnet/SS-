@@ -444,7 +444,6 @@ private extension AnyTransition {
 
 struct IslandView: View {
     @ObservedObject private var app = AppState.shared
-    @ObservedObject private var pro = ProManager.shared
     @ObservedObject private var ui = IslandController.shared.ui
     @ObservedObject private var settings = SettingsStore.shared
 
@@ -582,7 +581,6 @@ struct IslandView: View {
                 Text("SS+")
                     .font(.system(size: 12.5, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
-                if pro.isPro { proBadge }
             }
         case let .selecting(mode, style):
             selectingLeading(mode: mode, style: style)
@@ -677,7 +675,6 @@ struct IslandView: View {
                     Text("SS+")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
-                    if pro.isPro { proBadge }
                 }
                 Spacer(minLength: 8)
                 settingsButton
@@ -731,19 +728,6 @@ struct IslandView: View {
                 AppState.shared.beginRecordingSelection()
             }
         }
-    }
-
-    private var proBadge: some View {
-        Text("PRO")
-            .font(.system(size: 9, weight: .heavy, design: .rounded))
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(Capsule().fill(LinearGradient(
-                gradient: Gradient(colors: [.pink, .purple]),
-                startPoint: .leading,
-                endPoint: .trailing
-            )))
-            .foregroundColor(.white)
     }
 
     private var settingsButton: some View {

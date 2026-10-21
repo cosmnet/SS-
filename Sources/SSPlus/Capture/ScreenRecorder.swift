@@ -113,12 +113,11 @@ final class ScreenRecorder: NSObject, ScreenRecording, SCStreamOutput, SCStreamD
         }
 
         let settings = SettingsStore.shared
-        let isPro = ProManager.shared.isPro
         let fileType: AVFileType = settings.videoFormat.lowercased() == "mp4" ? .mp4 : .mov
-        let codec: AVVideoCodecType = (settings.videoCodec.lowercased() == "hevc" && isPro) ? .hevc : .h264
+        let codec: AVVideoCodecType = settings.videoCodec.lowercased() == "hevc" ? .hevc : .h264
         let autoBitrate = min(40_000_000, max(2_000_000, Int(Double(pixelWidth * pixelHeight * safeFPS) * 0.07)))
         let chosenMbps = settings.videoBitrateMbps
-        let bitrate = (chosenMbps > 0 && isPro) ? chosenMbps * 1_000_000 : autoBitrate
+        let bitrate = chosenMbps > 0 ? chosenMbps * 1_000_000 : autoBitrate
 
         let writer = try AVAssetWriter(outputURL: url, fileType: fileType)
         let videoSettings: [String: Any] = [

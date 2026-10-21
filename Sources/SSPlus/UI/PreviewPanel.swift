@@ -449,11 +449,7 @@ struct PreviewCardView: View {
                 chip(icon: "link", label: L("Drive linkini kopyala")) { controller?.copyDriveLink() }
                 chip(icon: "arrow.up.right.square", label: L("Google Drive'da aç")) { controller?.openDriveLink() }
             }
-            if ProManager.shared.isPro {
-                chip(icon: "text.viewfinder", label: "OCR") { controller?.runOCR() }
-            } else {
-                proChip
-            }
+            chip(icon: "text.viewfinder", label: "OCR") { controller?.runOCR() }
             chip(icon: "folder", label: L("Göster")) { controller?.revealCurrent() }
             chip(icon: "trash", label: L("Sil"), tint: .red) { controller?.deleteCurrent() }
             chip(icon: "xmark", label: L("Kapat")) { controller?.close() }
@@ -465,19 +461,6 @@ struct PreviewCardView: View {
                 .overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5))
                 .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
         )
-    }
-
-    private var proChip: some View {
-        HStack(spacing: 3) {
-            SymbolImage(name: "text.viewfinder")
-            Text("PRO")
-                .font(.system(size: 8, weight: .heavy, design: .rounded))
-        }
-        .font(.system(size: 11))
-        .foregroundColor(.white.opacity(0.3))
-        .padding(.horizontal, 7)
-        .padding(.vertical, 5)
-        .compatHelp(L("OCR yalnızca Pro'da — Ayarlar'dan aç"))
     }
 
     private func chip(icon: String, label: String, tint: Color = .white, action: @escaping () -> Void) -> some View {
