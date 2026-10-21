@@ -109,10 +109,9 @@ SS+ — Kurulum
 3) KULLANIM
    SS+ menü çubuğunda çalışır, Dock'ta görünmez. Menü çubuğundaki simgeye tıkla.
 
-4) PRO'YU AÇMA
-   Ayarlar → Pro → "Etkinleştirme kodu" alanına sana verilen kodu yaz ve
-   "Etkinleştir"e bas. Pro özellikleri (OCR ile metin kopyalama, 60 FPS video,
-   ses kaydı, HEVC ve özel bit hızı) anında açılır.
+4) HER ŞEY AÇIK
+   Metin tanıma (OCR), 60 fps kayıt, HEVC, özel bit hızı ve ses kaydı dahil
+   tüm özellikler ücretsiz; kod, abonelik ya da hesap yok.
 
 5) KISAYOLLAR
    ⌃⌘–  yakalama aracı  ·  ⌃⇧⌘–  video kaydı başlat / durdur
