@@ -1,6 +1,6 @@
 # SS+
 
-macOS için hafif ve hızlı bir ekran yakalama uygulaması. Google Drive yüklemesini açmadığın sürece hiçbir veri dışarı gönderilmez.
+macOS için hafif ve hızlı bir ekran yakalama uygulaması. Tamamen ücretsiz; sunucu yok, hesap yok, hiçbir veri dışarı gönderilmez.
 Menü çubuğunda yaşar, istersen ekranın üst ortasındaki **island** (dinamik ada) arayüzüyle açılır ve
 yakaladığın her şeyi sağ alt köşede küçük bir önizleme kartı olarak sunar.
 
@@ -32,9 +32,6 @@ Swift + SwiftUI + ScreenCaptureKit ile yazılmıştır. Harici bağımlılık yo
   Varsayılan olarak **kapalıdır**; açıldığında kopyalananlar
   `~/Library/Application Support/SSPlus/Clipboard` altına yazılır. Şifre yöneticilerinin gizli
   işaretlediği içerik hiçbir zaman kaydedilmez; "Çıkışta geçmişi sil" seçeneği vardır.
-- **Google Drive (isteğe bağlı)** — Kendi Google hesabınla oturum aç; ekran görüntüleri Drive'da
-  SS+'ın oluşturduğu klasöre yüklenir (klasörü sonra istediğin yere taşıyabilirsin), istersen
-  "bağlantıya sahip herkes" ile paylaşılıp linki panoya kopyalanır. Ayrıntılar aşağıda.
 - **Metin Kopyala (OCR)** — Görüntüdeki yazıyı Vision ile tanıyıp panoya alır
 - **60 FPS** video kaydı, **HEVC** kodeği ve özel bit hızı
 
@@ -109,7 +106,12 @@ Dağıtıma hazır DMG üretmek için:
 
 ---
 
-## Google Drive kurulumu (geliştirici, bir kez)
+## Google Drive kurulumu (geliştirici, isteğe bağlı)
+
+> **Yayımlanan paketlerde Drive yoktur.** `Resources/GoogleOAuth.plist` olmadan
+> derlenen paketlerde Ayarlar'daki Google Drive bölümü hiç görünmez; GitHub
+> Releases'teki DMG'ler bu durumda. Aşağısı yalnızca kendi derlemende Drive'ı
+> açmak istersen geçerlidir.
 
 Drive yüklemesi Google'ın OAuth istemcisi ister. Bu yalnızca uygulamanın *kimliğidir*: her
 kullanıcı kendi hesabıyla oturum açar, belirteçler kendi Mac'inin Anahtar Zinciri'nde kalır ve

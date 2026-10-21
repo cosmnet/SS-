@@ -245,8 +245,10 @@ struct GeneralTab: View {
             }
         }
 
-        SettingsSection(title: "Google Drive", icon: "icloud.and.arrow.up") {
-            driveSection
+        if auth.isConfigured {
+            SettingsSection(title: "Google Drive", icon: "icloud.and.arrow.up") {
+                driveSection
+            }
         }
 
         SettingsSection(title: L("Yakalama"), icon: "camera.viewfinder") {
@@ -335,9 +337,9 @@ struct GeneralTab: View {
 
     @ViewBuilder
     private var driveSection: some View {
-        if !auth.isConfigured {
-            caption(L("Bu derlemede Google istemci kimliği yok (Resources/GoogleOAuth.plist). Kurulum için README'ye bak."))
-        } else {
+        // Bölümün tamamı yalnızca istemci kimliği varken çizilir (yukarıda),
+        // yayımlanan paketlerde Drive hiç görünmez.
+        Group {
             // ANA ANAHTAR — her durumda görünür ve tek tıkla kapatılır.
             // Kapatmak oturumu KAPATMAZ: yükleme durur, hesap bağlı kalır ve
             // tekrar açıldığında yeniden oturum açmak gerekmez.
