@@ -93,31 +93,6 @@ mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
 
-cat > "$STAGE/OKU-BENI.txt" <<'TXT'
-SS+ — Kurulum
-=============
-
-1) SS+ simgesini soldaki "Applications" klasörüne sürükle. Hepsi bu:
-   uygulama Apple tarafından noterlendiği için ek bir güvenlik adımı yok.
-
-2) İZİN  (uygulamanın çalışması için şart)
-   SS+ ilk yakalamada macOS'un Ekran Kaydı iznini ister; "Sistem Ayarları'nı
-   Aç" deyip SS+ anahtarını aç. İzni verdikten sonra SS+ uygulamasını KAPAT ve
-   yeniden AÇ; macOS izni ancak yeniden başlatınca uygular.
-   (Ses kaydını kullanacaksan mikrofon izni de ilk kullanımda sorulur.)
-
-3) KULLANIM
-   SS+ menü çubuğunda çalışır, Dock'ta görünmez. Menü çubuğundaki simgeye tıkla.
-
-4) HER ŞEY AÇIK
-   Metin tanıma (OCR), 60 fps kayıt, HEVC, özel bit hızı ve ses kaydı dahil
-   tüm özellikler ücretsiz; kod, abonelik ya da hesap yok.
-
-5) KISAYOLLAR
-   ⌃⌘–  yakalama aracı  ·  ⌃⇧⌘–  video kaydı başlat / durdur
-   (Ayarlar → Kısayollar'dan değiştirilebilir.)
-TXT
-
 # 4) DMG oluştur
 echo "▶︎ DMG oluşturuluyor…"
 TMP_DMG="dist/.tmp.dmg"
@@ -125,24 +100,31 @@ rm -f "$TMP_DMG"
 hdiutil create -srcfolder "$STAGE" -volname "$VOL_NAME" \
   -fs HFS+ -format UDRW -ov "$TMP_DMG" >/dev/null
 
-MOUNT_DIR="/Volumes/${VOL_NAME}"
-hdiutil detach "$MOUNT_DIR" >/dev/null 2>&1 || true
-hdiutil attach "$TMP_DMG" -readwrite -noverify -noautoopen >/dev/null
+# Kendi bağlama noktamızı veriyoruz: kullanıcının Finder'ında aynı adlı bir DMG
+# açıkken /Volumes/<ad> ona gider; eskiden betik onu çıkarmaya çalışıp
+# "Kaynak meşgul" ile düşüyordu (ve yanlış birimi düzenleme riski vardı).
+MOUNT_DIR="${PWD}/dist/.dmg-mnt"
+rm -rf "$MOUNT_DIR"
+mkdir -p "$MOUNT_DIR"
+DEV="$(hdiutil attach "$TMP_DMG" -readwrite -noverify -noautoopen -mountpoint "$MOUNT_DIR" | awk '/Apple_HFS|GUID_partition_scheme/{print $1; exit}')"
+if [[ -z "$DEV" ]]; then
+  echo "✗ Geçici DMG bağlanamadı." >&2
+  exit 1
+fi
 
 osascript <<APPLESCRIPT >/dev/null 2>&1 || echo "  ⚠︎ Pencere düzeni ayarlanamadı (Finder izni yok); DMG yine de çalışır."
 tell application "Finder"
-  tell disk "${VOL_NAME}"
+  tell folder ((POSIX file "${MOUNT_DIR}") as alias)
     open
     set current view of container window to icon view
     set toolbar visible of container window to false
     set statusbar visible of container window to false
-    set the bounds of container window to {200, 150, 800, 570}
+    set the bounds of container window to {200, 150, 800, 500}
     set theViewOptions to the icon view options of container window
     set arrangement of theViewOptions to not arranged
     set icon size of theViewOptions to 128
-    set position of item "${APP_NAME}.app" of container window to {150, 190}
-    set position of item "Applications" of container window to {450, 190}
-    set position of item "OKU-BENI.txt" of container window to {300, 340}
+    set position of item "${APP_NAME}.app" of container window to {160, 170}
+    set position of item "Applications" of container window to {440, 170}
     update without registering applications
     delay 1
     close
@@ -151,7 +133,8 @@ end tell
 APPLESCRIPT
 
 sync
-hdiutil detach "$MOUNT_DIR" >/dev/null
+hdiutil detach "$DEV" >/dev/null
+rm -rf "$MOUNT_DIR"
 hdiutil convert "$TMP_DMG" -format UDZO -imagekey zlib-level=9 -o "$DMG" >/dev/null
 rm -f "$TMP_DMG"
 rm -rf "$STAGE"
