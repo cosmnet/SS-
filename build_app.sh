@@ -47,8 +47,11 @@ BUILD="${BUILD:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 # Swift eşzamanlılık çalışma zamanı 10.15–11'de sistemde bulunmadığından
 # libswift_Concurrency.dylib pakete (Contents/Frameworks) eklenir; ikili
 # @executable_path/../Frameworks rpath'ini taşır (Package.swift).
-MIN_INTEL="10.15"
-MIN_ARM="11.0"
+# Xcode 27 ve sonrası 12.0'ın altını derlemeyi reddeder; eski hedefler ancak
+# eski bir araç zinciriyle derlenebilir. Gerekirse dışarıdan geçilebilir:
+#   MIN_INTEL=10.15 MIN_ARM=11.0 ./build_app.sh
+MIN_INTEL="${MIN_INTEL:-12.0}"
+MIN_ARM="${MIN_ARM:-12.0}"
 
 # Yerelleştirme tablosunda aynı anahtar iki kez yazılırsa swiftc yalnızca UYARIR,
 # ama Swift çalışma zamanı sözlük ilk okunduğunda çöker ("Dictionary literal
@@ -142,7 +145,7 @@ cat > "${BUNDLE}/Contents/Info.plist" <<PLIST
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.utilities</string>
     <key>LSMinimumSystemVersion</key>
-    <string>10.15</string>
+    <string>${MIN_INTEL}</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSMicrophoneUsageDescription</key>

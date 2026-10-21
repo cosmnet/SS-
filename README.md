@@ -69,7 +69,7 @@ GitHub Releases'e gider.
 ## İndir ve kur
 
 En güncel sürümü <https://ssplus-app.vercel.app> adresinden `SSPlus-<sürüm>.dmg` olarak
-indirebilirsin (universal: Intel ≥ 10.15, Apple Silicon ≥ 11).
+indirebilirsin (universal: macOS 12 Monterey ve üzeri, Intel + Apple Silicon).
 
 1. DMG'yi aç, **SS+** simgesini **Applications** klasörüne sürükle. Paket Developer ID ile
    imzalı ve Apple tarafından noterlenmiştir; "doğrulanamadı" uyarısı çıkmaz.
@@ -221,7 +221,9 @@ Sources/SSPlus/
 
 ## Gereksinimler
 
-- **macOS 10.15 Catalina veya üzeri** (Intel), **macOS 11 Big Sur veya üzeri** (Apple Silicon) — DMG universal'dır.
+- **macOS 12 Monterey veya üzeri** (Intel + Apple Silicon) — DMG universal'dır.
+  Xcode 27 ve sonrası 12.0'ın altını derlemiyor; daha eski hedefler için eski bir araç
+  zinciriyle `MIN_INTEL=10.15 MIN_ARM=11.0 ./build_app.sh`.
 - Sürüme göre özellikler: çentik adası (macOS 12+), sistem sesi kaydı (13+), ekran görüntüsünde imleç
   ve ScreenCaptureKit motoru (14+). Daha eski sürümlerde CoreGraphics ve AVFoundation yolu kullanılır.
 - Derleme için Swift 5.9+ araç zinciri (Command Line Tools yeterli; universal derleme `--triple` ile yapılır).
