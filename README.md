@@ -71,21 +71,10 @@ GitHub Releases'e gider.
 En güncel sürümü <https://ssplus-app.vercel.app> adresinden `SSPlus-<sürüm>.dmg` olarak
 indirebilirsin (universal: Intel ≥ 10.15, Apple Silicon ≥ 11).
 
-1. DMG'yi aç, **SS+** simgesini **Applications** klasörüne sürükle.
-2. **İlk açılış (bir kereye mahsus):** Uygulama Apple tarafından noterlenmediği için
-   macOS ilk açılışta "doğrulanamadı" uyarısı verir.
-   - Applications klasöründen SS+ uygulamasını bir kez aç (uyarıyı kapat).
-   - **Sistem Ayarları → Gizlilik ve Güvenlik**'e gir, aşağı in.
-   - "SS+ engellendi" satırındaki **Yine de Aç** düğmesine bas ve onayla.
-
-   Dilersen tek satırla da olur:
-
-   ```sh
-   xattr -dr com.apple.quarantine /Applications/SS+.app
-   ```
-3. **Ekran Kaydı iznini** ver (aşağıdaki bölüm), sonra uygulamayı kapatıp yeniden aç.
-
----
+1. DMG'yi aç, **SS+** simgesini **Applications** klasörüne sürükle. Paket Developer ID ile
+   imzalı ve Apple tarafından noterlenmiştir; "doğrulanamadı" uyarısı çıkmaz.
+2. SS+ ilk yakalamada **Ekran Kaydı** iznini ister (aşağıdaki bölüm); izni verdikten sonra
+   uygulamayı kapatıp yeniden aç.
 
 ## Kaynaktan derleme
 

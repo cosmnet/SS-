@@ -30,10 +30,64 @@ VOL_NAME="SS+ ${VERSION}"
 DMG="dist/SSPlus-${VERSION}.dmg"
 STAGE="dist/.dmg-stage"
 
+# İmza + notarizasyon kimliği (DMG'den önce uygulamanın kendisi için de gerekli)
+#
+# Gatekeeper, indirilen (karantinalı) bir uygulamayı ancak Developer ID ile
+# imzalı VE Apple tarafından noterlenmişse uyarısız açar. Apple Development ya
+# da kendinden imzalı sertifikalar yetmez.
+#
+# Notarizasyon için bir kerelik kimlik kaydı gerekir (şifre burada saklanmaz,
+# Anahtar Zinciri'ne gider):
+#   xcrun notarytool store-credentials ssplus-notary \
+#     --apple-id <apple-id> --team-id <TEAM_ID> --password <uygulamaya-özel-şifre>
+# Uygulamaya özel şifre: https://appleid.apple.com → Oturum Açma ve Güvenlik.
+NOTARY_PROFILE="${NOTARY_PROFILE:-ssplus-notary}"
+SIGN_ID="$(security find-identity -v -p codesigning 2>/dev/null | sed -n 's/.*"\(Developer ID Application:[^"]*\)".*/\1/p' | head -1)"
+HAVE_NOTARY=0
+if [[ -z "$SIGN_ID" ]]; then
+  echo "  ⚠︎ Developer ID Application sertifikası bulunamadı; paket imzalanmayacak"
+  echo "     ve noterlenmeyecek. Bu paketi indiren herkes \"uygulama açılamadı\""
+  echo "     uyarısı alır. Sertifika: Xcode → Settings → Accounts → hesabını seç →"
+  echo "     Manage Certificates → + → Developer ID Application."
+elif xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1; then
+  HAVE_NOTARY=1
+else
+  echo "  ⚠︎ Notarizasyon profili '${NOTARY_PROFILE}' kayıtlı değil; paket imzalanır"
+  echo "     ama noterlenmez. Tek seferlik kayıt için:"
+  echo "       xcrun notarytool store-credentials ${NOTARY_PROFILE} \\"
+  echo "         --apple-id <apple-id> --team-id <TEAM_ID> --password <uygulamaya-özel-şifre>"
+fi
+
+# Verilen dosyayı Apple'a gönderir ve bileti üzerine işler.
+notarize() {
+  local item="$1" label="$2"
+  echo "▶︎ ${label} notere gönderiliyor (birkaç dakika sürebilir)…"
+  if xcrun notarytool submit "$item" --keychain-profile "$NOTARY_PROFILE" --wait; then
+    xcrun stapler staple "$3"
+    echo "  ✓ ${label} noterlendi ve bilet işlendi."
+  else
+    echo "  ✗ ${label} notarizasyonu başarısız. Ayrıntı için:" >&2
+    echo "     xcrun notarytool log <submission-id> --keychain-profile ${NOTARY_PROFILE}" >&2
+    exit 1
+  fi
+}
+
 # 1) Universal release derlemesi + imza (sürüm Info.plist'e de yazılır)
 VERSION="$VERSION" ./build_app.sh
 
-# 2) DMG içeriği
+# 2) Uygulamanın kendisini noterle ve bileti .app'e işle.
+#    DMG'yi noterlemek de yeter ama bilet yalnızca DMG'de kalır; kullanıcı
+#    uygulamayı Applications'a kopyaladıktan sonra çevrimdışıysa Gatekeeper
+#    bileti bulamaz. .app'e işlenen bilet bu durumu da kapatır.
+if (( HAVE_NOTARY )); then
+  APP_ZIP="dist/.app-notarize.zip"
+  rm -f "$APP_ZIP"
+  ditto -c -k --keepParent "$APP" "$APP_ZIP"
+  notarize "$APP_ZIP" "Uygulama" "$APP"
+  rm -f "$APP_ZIP"
+fi
+
+# 3) DMG içeriği
 rm -rf "$STAGE" "$DMG"
 mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/"
@@ -43,39 +97,29 @@ cat > "$STAGE/OKU-BENI.txt" <<'TXT'
 SS+ — Kurulum
 =============
 
-1) SS+ simgesini soldaki "Applications" klasörüne sürükle.
+1) SS+ simgesini soldaki "Applications" klasörüne sürükle. Hepsi bu:
+   uygulama Apple tarafından noterlendiği için ek bir güvenlik adımı yok.
 
-2) İLK AÇILIŞ  (bir kereye mahsus)
-   SS+ Apple tarafından noterlenmiş bir geliştirici hesabıyla imzalanmadığı
-   için macOS ilk açılışta "doğrulanamadı" uyarısı verir. Aşması çok kolay:
+2) İZİN  (uygulamanın çalışması için şart)
+   SS+ ilk yakalamada macOS'un Ekran Kaydı iznini ister; "Sistem Ayarları'nı
+   Aç" deyip SS+ anahtarını aç. İzni verdikten sonra SS+ uygulamasını KAPAT ve
+   yeniden AÇ; macOS izni ancak yeniden başlatınca uygular.
+   (Ses kaydını kullanacaksan mikrofon izni de ilk kullanımda sorulur.)
 
-   - Applications klasöründen SS+ uygulamasını bir kez aç (uyarı çıkacak, kapat).
-   - Sistem Ayarları → Gizlilik ve Güvenlik'i aç, aşağı in.
-   - "SS+ engellendi" satırındaki "Yine de Aç" düğmesine bas, şifreni gir.
-   - Çıkan onayda tekrar "Aç" de. Bundan sonra normal şekilde açılır.
-
-   (Alternatif: Terminal'de tek satır
-      xattr -dr com.apple.quarantine /Applications/SS+.app )
-
-3) İZİNLER  (uygulamanın çalışması için şart)
-   Sistem Ayarları → Gizlilik ve Güvenlik → Ekran Kaydı → SS+ açık olmalı.
-   İzni verdikten sonra SS+ uygulamasını KAPAT ve yeniden AÇ;
-   macOS izni ancak yeniden başlatınca uygular.
-
-4) KULLANIM
+3) KULLANIM
    SS+ menü çubuğunda çalışır, Dock'ta görünmez. Menü çubuğundaki simgeye tıkla.
 
-5) PRO'YU AÇMA
+4) PRO'YU AÇMA
    Ayarlar → Pro → "Etkinleştirme kodu" alanına sana verilen kodu yaz ve
    "Etkinleştir"e bas. Pro özellikleri (OCR ile metin kopyalama, 60 FPS video,
-   sistem sesi, HEVC ve özel bit hızı) anında açılır.
+   ses kaydı, HEVC ve özel bit hızı) anında açılır.
 
-6) KISAYOLLAR
+5) KISAYOLLAR
    ⌃⌘–  yakalama aracı  ·  ⌃⇧⌘–  video kaydı başlat / durdur
    (Ayarlar → Kısayollar'dan değiştirilebilir.)
 TXT
 
-# 3) DMG oluştur
+# 4) DMG oluştur
 echo "▶︎ DMG oluşturuluyor…"
 TMP_DMG="dist/.tmp.dmg"
 rm -f "$TMP_DMG"
@@ -113,48 +157,13 @@ hdiutil convert "$TMP_DMG" -format UDZO -imagekey zlib-level=9 -o "$DMG" >/dev/n
 rm -f "$TMP_DMG"
 rm -rf "$STAGE"
 
-# 4) DMG imzası + notarizasyon
-#
-# Gatekeeper, indirilen (karantinalı) bir uygulamayı ancak Developer ID ile
-# imzalı VE Apple tarafından noterlenmişse açar. Apple Development ya da
-# kendinden imzalı sertifikalar yetmez — kullanıcı "uygulama açılamadı" alır.
-#
-# Notarizasyon için bir kerelik kimlik kaydı gerekir (şifre burada saklanmaz,
-# Anahtar Zinciri'ne gider):
-#   xcrun notarytool store-credentials ssplus-notary \
-#     --apple-id <apple-id> --team-id <TEAM_ID> --password <uygulamaya-özel-şifre>
-# Uygulamaya özel şifre: https://appleid.apple.com → Oturum Açma ve Güvenlik.
-NOTARY_PROFILE="${NOTARY_PROFILE:-ssplus-notary}"
-
-SIGN_ID="$(security find-identity -v -p codesigning 2>/dev/null | sed -n 's/.*"\(Developer ID Application:[^"]*\)".*/\1/p' | head -1)"
-if [[ -z "$SIGN_ID" ]]; then
-  echo ""
-  echo "  ⚠︎ Developer ID Application sertifikası bulunamadı; DMG imzalanmadı ve"
-  echo "     noterlenmedi. Bu paketi indiren herkes "uygulama açılamadı" uyarısı alır."
-  echo "     Sertifika: Xcode → Settings → Accounts → hesabını seç → Manage"
-  echo "     Certificates → + → Developer ID Application (Account Holder/Admin yetkisi şart)."
-else
+# 5) DMG imzası + notarizasyonu (indirilen dosyanın kendisi de doğrulanır)
+if [[ -n "$SIGN_ID" ]]; then
   echo "▶︎ DMG imzalanıyor: ${SIGN_ID}"
   codesign --force --timestamp --sign "$SIGN_ID" "$DMG"
-
-  if ! xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1; then
-    echo ""
-    echo "  ⚠︎ Notarizasyon profili '${NOTARY_PROFILE}' kayıtlı değil; DMG imzalandı"
-    echo "     ama noterlenmedi. Tek seferlik kayıt için:"
-    echo "       xcrun notarytool store-credentials ${NOTARY_PROFILE} \\"
-    echo "         --apple-id <apple-id> --team-id <TEAM_ID> --password <uygulamaya-özel-şifre>"
-  else
-    echo "▶︎ Apple'a noterlenmek üzere gönderiliyor (birkaç dakika sürebilir)…"
-    if xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait; then
-      # Bileti DMG'ye işle: böylece kullanıcı çevrimdışıyken de doğrulanabilir.
-      xcrun stapler staple "$DMG"
-      echo "  ✓ Noterlendi ve bilet işlendi."
-      spctl -a -vvv -t open --context context:primary-signature "$DMG" 2>&1 | sed 's/^/     /'
-    else
-      echo "  ✗ Notarizasyon başarısız. Ayrıntı için:"
-      echo "     xcrun notarytool log <submission-id> --keychain-profile ${NOTARY_PROFILE}"
-      exit 1
-    fi
+  if (( HAVE_NOTARY )); then
+    notarize "$DMG" "DMG" "$DMG"
+    spctl -a -vvv -t open --context context:primary-signature "$DMG" 2>&1 | sed 's/^/     /'
   fi
 fi
 

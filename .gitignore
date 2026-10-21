@@ -4,3 +4,4 @@ dist/
 .swiftpm/
 **/__pycache__/
 Resources/GoogleOAuth.plist
+MARKETING/
